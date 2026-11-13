@@ -120,6 +120,13 @@ label.f.warn textarea{background:var(--amber-soft);border-color:rgba(180,110,0,.
 .more .meta{margin-bottom:18px}
 .more label.f{margin-bottom:16px}.more .meta label.f{margin-bottom:0}
 .more label.f input,.more label.f select,.more label.f textarea{background:var(--surface)}
+.refs{display:flex;flex-direction:column;gap:10px}
+.refs-list{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.refs-list a{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:8px 14px;border:1px solid var(--line-2);border-radius:999px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:600;text-decoration:none;transition:border-color .2s,background .2s}
+.refs-list a:hover{border-color:var(--ink);background:var(--paper)}
+.refs-list a span.h{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46ch}
+.refs-list a span.ar{color:var(--red-text)}
+.refs-list a small{color:var(--muted);font-weight:500;font-size:12px}
 .savebar{position:sticky;bottom:12px;z-index:5;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border:1px solid var(--ink);border-radius:999px;padding:10px 12px 10px 22px;box-shadow:0 14px 30px -14px rgba(14,14,14,.35)}
 .savemsg{font-size:14px;color:var(--muted)}.savemsg.dirty{color:var(--red-text);font-weight:600}
 .comments{border-top:1px solid var(--line);padding-top:28px;margin-top:6px;display:flex;flex-direction:column;gap:16px}
@@ -356,7 +363,7 @@ var JORNADAS={
   D:{nombre:"Jornada D · Navidad y cierre de año",fecha:"2026-12-09",detalle:"Sala de ventas decorada y exteriores al atardecer con luces. Últimos tres reels del año."}
 };
 var FERIADOS={"2026-12-08":"Feriado","2026-12-25":"Navidad","2027-01-01":"Año Nuevo"};
-var FIELDS=["titulo","formato","estado","jornada","grab","pub","dur","resp","talento","loc","proyecto","gancho","escenas","pantalla","audio","cta","prod","ojo","archivado","por","creado"];
+var FIELDS=["titulo","formato","estado","jornada","grab","pub","dur","resp","talento","loc","proyecto","gancho","escenas","pantalla","audio","cta","prod","ojo","refs","archivado","por","creado"];
 var COLS=["guiones","comentarios","equipo","dias"];
 var REELS=[
 {id:"r1",n:1,titulo:"Efika: todo lo que te queda cerca",formato:"Recorrido",jornada:"A",grab:"2026-11-18",pub:"2026-11-28",dur:"30 s",talento:"1 ejecutivo/a como anfitrión",loc:"Entorno de Edificio Efika: comercio de barrio, colegio, restaurante y supermercado más cercanos",proyecto:"Edificio Efika",
@@ -659,12 +666,24 @@ function renderStats(){
 function renderList(){
   var h=""; ids(showArch).forEach(function(id){
     var e=val(id,"estado"), a=val(id,"archivado")==="1";
-    h+='<button class="item'+(a?" arch":"")+'" role="option" data-id="'+esc(id)+'" aria-selected="'+(id===sel)+'"><span class="n">'+num(id)+'</span><span class="t">'+esc(val(id,"titulo")||"Sin título")+'</span><span class="m"><span class="'+pillClass(e)+'">'+esc(a?"Archivado":e)+'</span><span>'+fd(val(id,"pub"))+'</span>'+(val(id,"resp")?'<span>· '+esc(val(id,"resp"))+'</span>':'')+'</span></button>';
+    h+='<button class="item'+(a?" arch":"")+'" role="option" data-id="'+esc(id)+'" aria-selected="'+(id===sel)+'"><span class="n">'+num(id)+'</span><span class="t">'+esc(val(id,"titulo")||"Sin título")+'</span><span class="m"><span class="'+pillClass(e)+'">'+esc(a?"Archivado":e)+'</span><span>'+fd(val(id,"pub"))+'</span>'+(val(id,"resp")?'<span>· '+esc(val(id,"resp"))+'</span>':'')+(refList(val(id,"refs")).length?'<span>· '+refList(val(id,"refs")).length+' ref'+(refList(val(id,"refs")).length>1?'s':'')+'</span>':'')+'</span></button>';
   });
   document.getElementById("list").innerHTML=h;
 }
 function inp(id,k,label,type,cls){ return '<label class="f '+(cls||"")+'" for="f-'+k+'">'+label+'<input id="f-'+k+'" data-k="'+k+'" type="'+(type||"text")+'" value="'+esc(fv(id,k))+'"></label>'; }
 function ta(id,k,label,rows,cls,hint){ return '<label class="f '+(cls||"")+'" for="f-'+k+'">'+label+(hint?' <small>'+hint+'</small>':'')+'<textarea id="f-'+k+'" data-k="'+k+'" rows="'+rows+'">'+esc(fv(id,k))+'</textarea></label>'; }
+function refList(txt){
+  var out=[], re=/https?:\/\/[^\s<>"']+/g, lines=String(txt||"").split(/\r?\n/), head="";
+  lines.forEach(function(ln){ var m=ln.match(re);
+    if(!m){ head=ln.trim(); return; }
+    var note=ln.replace(re,"").replace(/[\s:–—-]+$/,"").trim()||head; head="";
+    m.forEach(function(u){ var host=""; try{ host=new URL(u).hostname.replace(/^www\./,""); }catch(e){ return; } out.push({u:u,host:host,note:note}); }); });
+  return out;
+}
+function refHtml(txt){
+  var r=refList(txt); if(!r.length) return "";
+  return r.map(function(x){ return '<li><a href="'+esc(x.u)+'" target="_blank" rel="noopener noreferrer"><span class="ar" aria-hidden="true">↗</span><span class="h">'+esc(x.note||x.host)+'</span>'+(x.note?'<small>'+esc(x.host)+'</small>':'')+'</a></li>'; }).join("");
+}
 function respOptions(id){
   var cur=fv(id,"resp"), names=team().map(function(t){return t.nombre;}).filter(Boolean);
   if(cur && names.indexOf(cur)<0) names.push(cur);
@@ -681,6 +700,7 @@ function renderSheet(){
   '<div class="btns"><button class="btn" id="b-copy" type="button">Copiar guion</button>'+(DEF[id]?'<button class="btn" id="b-reset" type="button">Volver a la sugerencia</button>':'')+'<button class="btn" id="b-arch" type="button">'+(a?"Desarchivar":"Archivar")+'</button></div></div>'+
   inp(id,"titulo","Reel "+num(id),"text","title")+
   '<div class="plan">'+es+re+inp(id,"pub","Se publica","date")+inp(id,"grab","Se graba","date")+'</div>'+
+  '<div class="refs">'+ta(id,"refs","Referencias",3,"","un link por línea; puedes escribir una nota antes del link")+'<ul class="refs-list" id="refs-list" aria-label="Links de referencia">'+refHtml(fv(id,"refs"))+'</ul></div>'+
   ta(id,"gancho","Gancho",2,"hook","primeros 3 segundos")+
   ta(id,"escenas","Guion escena por escena",9)+
   ta(id,"pantalla","Texto en pantalla",4)+
@@ -714,6 +734,7 @@ function refreshSheet(){
   for(var i=0;i<els.length;i++){ var el=els[i]; if(el===document.activeElement) continue; var k=el.getAttribute("data-k");
     if(k==="resp"){ el.innerHTML=respOptions(sel); continue; }
     var v=fv(sel,k); if(el.value!==v) el.value=v; }
+  var rl=document.getElementById("refs-list"); if(rl) rl.innerHTML=refHtml(fv(sel,"refs"));
   renderComments(); renderSave();
 }
 function eventsByDay(){
@@ -793,13 +814,13 @@ document.getElementById("b-new").addEventListener("click",function(){
   var id=uid("n"); write("guiones/"+id,{titulo:"Nuevo reel",estado:"Sugerencia",creado:new Date().toISOString(),por:me||""},true);
   sel=id; renderAll(); var t=document.getElementById("f-titulo"); if(t){ t.focus(); t.select(); }
 });
-document.getElementById("sheet").addEventListener("input",function(e){ var k=e.target.getAttribute("data-k"); if(k){ (draft[sel]=draft[sel]||{})[k]=e.target.value; renderSave(); } });
+document.getElementById("sheet").addEventListener("input",function(e){ var k=e.target.getAttribute("data-k"); if(k){ (draft[sel]=draft[sel]||{})[k]=e.target.value; if(k==="refs"){ var rl=document.getElementById("refs-list"); if(rl) rl.innerHTML=refHtml(e.target.value); } renderSave(); } });
 document.getElementById("sheet").addEventListener("click",function(e){
   var t=e.target;
   if(t.id==="b-save"){ saveDraft(sel); renderSave("Guardado."); }
   if(t.id==="b-copy"){
     var id=sel;
-    var txt=label(id)+"\nGrabación: "+fd(val(id,"grab"))+" · Publicación: "+fd(val(id,"pub"))+" · "+val(id,"dur")+"\nResponsable: "+(val(id,"resp")||"sin asignar")+"\nEn cámara: "+val(id,"talento")+"\nLocación: "+val(id,"loc")+"\n\nGANCHO\n"+val(id,"gancho")+"\n\nGUION\n"+val(id,"escenas")+"\n\nTEXTO EN PANTALLA\n"+val(id,"pantalla")+"\n\nAUDIO\n"+val(id,"audio")+"\n\nCTA Y CAPTION\n"+val(id,"cta")+"\n\nPRODUCCIÓN\n"+val(id,"prod")+"\n\nOJO\n"+val(id,"ojo");
+    var txt=label(id)+"\nGrabación: "+fd(val(id,"grab"))+" · Publicación: "+fd(val(id,"pub"))+" · "+val(id,"dur")+"\nResponsable: "+(val(id,"resp")||"sin asignar")+"\nEn cámara: "+val(id,"talento")+"\nLocación: "+val(id,"loc")+"\n\nGANCHO\n"+val(id,"gancho")+"\n\nGUION\n"+val(id,"escenas")+"\n\nTEXTO EN PANTALLA\n"+val(id,"pantalla")+"\n\nAUDIO\n"+val(id,"audio")+"\n\nCTA Y CAPTION\n"+val(id,"cta")+"\n\nPRODUCCIÓN\n"+val(id,"prod")+"\n\nOJO\n"+val(id,"ojo")+(val(id,"refs")?"\n\nREFERENCIAS\n"+val(id,"refs"):"");
     try{ navigator.clipboard.writeText(txt).then(function(){ t.textContent="Copiado"; setTimeout(function(){t.textContent="Copiar guion";},1500); },function(){ t.textContent="No se pudo copiar"; }); }catch(err){ t.textContent="No se pudo copiar"; }
   }
   if(t.id==="b-reset"){
