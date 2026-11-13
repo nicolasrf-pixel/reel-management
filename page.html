@@ -124,12 +124,6 @@ label.f.warn textarea{background:var(--warn-bg);border-color:var(--warn-line)}
 .cmform textarea{flex:1;min-width:220px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;padding:12px 14px;resize:vertical;line-height:1.6}
 .calbar{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;justify-content:space-between;margin-bottom:20px}
 .calbar h2{font-size:clamp(34px,4vw,50px);font-weight:700;text-transform:capitalize;min-width:7ch;padding:0 8px}
-.months{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
-.months button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 16px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);text-transform:capitalize;transition:border-color .15s,color .15s}
-.months button:hover{border-color:var(--line-2);color:var(--ink)}
-.months button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.months button small{font-weight:700;color:var(--accent);margin-left:4px}
-.months button[aria-pressed="true"] small{color:var(--bg)}
 .calwrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:40px;align-items:start}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
 .dow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:0 10px 6px}
@@ -193,6 +187,35 @@ td a:hover{text-decoration:underline}
   .chip .tt{display:none}
   .dow{padding:0 4px 4px;letter-spacing:.04em}
 }
+
+/* Simplificación: estructura de la primera propuesta, menos peso visual */
+.wrap{max-width:1240px;padding:36px 32px 80px;gap:24px}
+header.top h1{font-size:clamp(34px,4.4vw,52px)}
+header.top h1::after{margin-top:10px}
+header.top p{font-size:16px;margin-top:10px}
+.stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat{padding:14px 18px}.stat b{font-size:30px}.stat span{margin-top:4px}
+.stat:last-child{background:var(--surface);border-color:var(--line)}
+.stat:last-child::before{display:block}
+.stat:last-child b,.stat:last-child span{color:inherit}.stat:last-child span{color:var(--muted);opacity:1}
+nav.tabs{margin-top:0;gap:6px 28px}
+.split{grid-template-columns:300px minmax(0,1fr);gap:28px}
+.sheet{padding:32px 36px;gap:22px;border-radius:16px}
+.plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
+.more{border:1px solid var(--line);border-radius:12px;padding:0 18px;background:var(--bg)}
+.more>summary{cursor:pointer;padding:16px 0;font-weight:700;color:var(--cyan);list-style:none}
+.more>summary::-webkit-details-marker{display:none}
+.more>summary::before{content:"+ ";}
+.more[open]>summary::before{content:"– ";}
+.more[open]{padding-bottom:20px}
+.more .meta{padding:0;border:0;background:transparent;margin-bottom:18px}
+.more label.f{margin-bottom:16px}.more .meta label.f{margin-bottom:0}
+.calwrap{grid-template-columns:minmax(0,1fr) 320px;gap:28px}
+.day{min-height:104px}
+.calbar h2{font-size:clamp(28px,3.2vw,40px)}
+.jor,.card{padding:26px 28px;border-radius:16px}
+@media (max-width:1100px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.split,.calwrap{grid-template-columns:1fr}}
+@media (max-width:700px){.wrap{padding:24px 16px 56px}.sheet{padding:22px 18px}.stats{gap:8px}.stat b{font-size:24px}}
 </style>
 </head>
 <body>
@@ -200,7 +223,7 @@ td a:hover{text-decoration:underline}
   <header class="top">
     <div>
       <h1>Reel Management</h1>
-      <p>Espacio de trabajo de Anita y Nico para los reels de Crillón: guiones, fechas, equipo y comentarios. Todo lo que ves se puede editar.</p>
+      <p>Guiones, fechas y comentarios de los reels de Crillón, en un solo lugar para Anita y Nico.</p>
     </div>
     <div class="right">
       <div class="who">Estoy como <span class="seg" id="who"><button type="button" data-me="Anita">Anita</button><button type="button" data-me="Nico">Nico</button></span></div>
@@ -234,9 +257,7 @@ td a:hover{text-decoration:underline}
   <section class="view" id="v-calendario">
     <div class="calbar">
       <div class="btns"><button class="btn" id="c-prev" type="button" aria-label="Mes anterior">‹</button><h2 id="c-title"></h2><button class="btn" id="c-next" type="button" aria-label="Mes siguiente">›</button><button class="btn" id="c-today" type="button">Hoy</button></div>
-      <div class="btns"><button class="btn" id="y-prev" type="button" aria-label="Año anterior">‹</button><b id="y-title"></b><button class="btn" id="y-next" type="button" aria-label="Año siguiente">›</button></div>
     </div>
-    <div class="months" id="months"></div>
     <div class="calwrap">
       <div>
         <div class="grid" id="grid"></div>
@@ -621,12 +642,12 @@ function change(id,k,v){
 
 /* vistas */
 function renderStats(){
-  var c={}; ESTADOS.forEach(function(e){c[e]=0;});
-  var all=ids(), next=null;
-  all.forEach(function(id){ var e=val(id,"estado"); c[e]=(c[e]||0)+1; var d=pd(val(id,"grab")); if(d && d>=today && ESTADOS.indexOf(e)<2 && (!next||d<next.d)) next={d:d,s:val(id,"grab")}; });
-  var h='<div class="stat"><b>'+all.length+'</b><span>reels activos</span></div>';
-  ESTADOS.forEach(function(e){ h+='<div class="stat"><b>'+c[e]+'</b><span>'+esc(e)+'</span></div>'; });
-  h+='<div class="stat"><b style="font-size:17px;line-height:1.6">'+(next?fd(next.s):"—")+'</b><span>próxima grabación</span></div>';
+  var all=ids(), pub=0, grab=0, next=null;
+  all.forEach(function(id){ var e=val(id,"estado"); if(e==="Publicado") pub++; if(ESTADOS.indexOf(e)>=2) grab++; var d=pd(val(id,"grab")); if(d && d>=today && ESTADOS.indexOf(e)<2 && (!next||d<next.d)) next={d:d,s:val(id,"grab")}; });
+  var h='<div class="stat"><b>'+all.length+'</b><span>reels</span></div>'+
+        '<div class="stat"><b>'+grab+'</b><span>ya grabados</span></div>'+
+        '<div class="stat"><b>'+pub+'</b><span>publicados</span></div>'+
+        '<div class="stat"><b style="font-size:20px;line-height:1.4">'+(next?fd(next.s):"—")+'</b><span>próxima grabación</span></div>';
   document.getElementById("stats").innerHTML=h;
 }
 function renderList(){
@@ -653,14 +674,13 @@ function renderSheet(){
   '<div class="sheet-head"><div class="orig" id="origline"></div>'+
   '<div class="btns"><button class="btn" id="b-copy" type="button">Copiar guion</button>'+(DEF[id]?'<button class="btn" id="b-reset" type="button">Volver a la sugerencia</button>':'')+'<button class="btn" id="b-arch" type="button">'+(a?"Desarchivar":"Archivar")+'</button></div></div>'+
   inp(id,"titulo","Reel "+num(id),"text","title")+
-  '<div class="meta">'+es+re+jo+inp(id,"grab","Grabación","date")+inp(id,"pub","Publicación","date")+inp(id,"dur","Duración")+inp(id,"formato","Formato")+'</div>'+
-  '<div class="two">'+inp(id,"talento","Quién sale en cámara")+inp(id,"proyecto","Proyecto o tema")+'</div>'+
-  inp(id,"loc","Locación")+
+  '<div class="plan">'+es+re+inp(id,"pub","Se publica","date")+inp(id,"grab","Se graba","date")+'</div>'+
   ta(id,"gancho","Gancho",2,"hook","primeros 3 segundos")+
   ta(id,"escenas","Guion escena por escena",9)+
-  '<div class="two">'+ta(id,"pantalla","Texto en pantalla",5)+ta(id,"audio","Audio",5)+'</div>'+
+  ta(id,"pantalla","Texto en pantalla",4)+
   ta(id,"cta","Llamado a la acción y caption",4)+
-  '<div class="two">'+ta(id,"prod","Props y producción",4)+ta(id,"ojo","Ojo antes de grabar",4,"warn")+'</div>'+
+  ta(id,"ojo","Ojo antes de grabar",3,"warn")+
+  '<details class="more"><summary>Producción y más datos</summary><div class="meta">'+jo+inp(id,"dur","Duración")+inp(id,"formato","Formato")+inp(id,"talento","Quién sale en cámara")+inp(id,"proyecto","Proyecto o tema")+inp(id,"loc","Locación")+'</div>'+ta(id,"audio","Audio",3)+ta(id,"prod","Props y producción",3)+'</details>'+
   '<div class="comments"><h3 id="cmtitle"></h3><div id="cmlist"></div><div class="cmform"><textarea id="cmtext" rows="2" placeholder="Escribe un comentario para este reel"></textarea><button class="btn primary" id="b-cm" type="button"></button></div></div>';
   renderComments();
 }
@@ -694,10 +714,6 @@ function eventsByDay(){
 function renderCal(){
   var y=calM.getFullYear(), mo=calM.getMonth(), ev=eventsByDay();
   document.getElementById("c-title").textContent=MESL[mo]+" "+y;
-  document.getElementById("y-title").textContent=y;
-  var counts=[0,0,0,0,0,0,0,0,0,0,0,0];
-  for(var k in ev){ var d0=pd(k); if(d0 && d0.getFullYear()===y) counts[d0.getMonth()]+=ev[k].length; }
-  document.getElementById("months").innerHTML=MESL.map(function(n,i){ return '<button type="button" data-m="'+i+'" aria-pressed="'+(i===mo)+'">'+n.slice(0,3)+(counts[i]?' <small>'+counts[i]+'</small>':'')+'</button>'; }).join("");
   var h=["lun","mar","mié","jue","vie","sáb","dom"].map(function(d){return '<div class="dow">'+d+'</div>';}).join("");
   var first=new Date(y,mo,1), lead=(first.getDay()+6)%7, days=new Date(y,mo+1,0).getDate();
   for(var i=0;i<lead;i++) h+='<div class="day out"></div>';
@@ -788,10 +804,7 @@ document.getElementById("sheet").addEventListener("click",function(e){
 });
 document.getElementById("c-prev").addEventListener("click",function(){ calM=new Date(calM.getFullYear(),calM.getMonth()-1,1); renderCal(); });
 document.getElementById("c-next").addEventListener("click",function(){ calM=new Date(calM.getFullYear(),calM.getMonth()+1,1); renderCal(); });
-document.getElementById("y-prev").addEventListener("click",function(){ calM=new Date(calM.getFullYear()-1,calM.getMonth(),1); renderCal(); });
-document.getElementById("y-next").addEventListener("click",function(){ calM=new Date(calM.getFullYear()+1,calM.getMonth(),1); renderCal(); });
 document.getElementById("c-today").addEventListener("click",function(){ calM=new Date(today.getFullYear(),today.getMonth(),1); selDay=iso(today); renderCal(); });
-document.getElementById("months").addEventListener("click",function(e){ var b=e.target.closest("[data-m]"); if(b){ calM=new Date(calM.getFullYear(),+b.getAttribute("data-m"),1); renderCal(); } });
 document.getElementById("grid").addEventListener("click",function(e){ var b=e.target.closest("[data-day]"); if(b){ selDay=b.getAttribute("data-day"); renderCal(); } });
 document.getElementById("panel").addEventListener("click",function(e){
   var t=e.target;
