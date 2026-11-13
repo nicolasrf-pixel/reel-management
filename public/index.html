@@ -39,9 +39,9 @@ header.top{display:flex;flex-direction:column;gap:36px;padding-bottom:4px}
 .lockup{display:flex;align-items:center;gap:14px;min-height:40px}
 .dlogo{display:block;width:112px;height:36px;background:var(--red);-webkit-mask:url(/img/disperso-logo.webp) left center/contain no-repeat;mask:url(/img/disperso-logo.webp) left center/contain no-repeat}
 .lockup .x{font-size:13px;color:var(--muted);letter-spacing:.02em}
-.clogo{display:inline-flex;align-items:center;justify-content:center;background:var(--navy);border-radius:10px;height:40px;min-width:118px;padding:0 14px}
-.clogo img{display:block;height:20px;width:auto;max-width:130px}
-.clogo .cname{display:none;color:#fff;font-family:var(--display);font-weight:620;letter-spacing:-.01em}
+.clogo{display:inline-flex;align-items:center;height:44px}
+.clogo img{display:block;height:44px;width:auto;max-width:180px}
+.clogo .cname{display:none;color:var(--navy);font-family:var(--display);font-weight:620;letter-spacing:-.01em}
 .clogo.fail img{display:none}.clogo.fail .cname{display:block}
 .right{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:flex-end;min-height:40px}
 .titlebar{display:flex;flex-direction:column;gap:14px}
@@ -213,7 +213,7 @@ td a:hover{text-decoration:underline}
 <div class="wrap">
   <header class="top">
     <div class="brandbar">
-      <div class="lockup"><a class="dlogo" href="https://estudiodisperso.com/" aria-label="Disperso, estudio creativo"></a><span class="x">para</span><span class="clogo" id="clogo"><img src="/img/crillon.png" alt="Crillón" height="20" onerror="document.getElementById('clogo').classList.add('fail')"><span class="cname">Crillón</span></span></div>
+      <div class="lockup"><a class="dlogo" href="https://estudiodisperso.com/" aria-label="Disperso, estudio creativo"></a><span class="x">para</span><span class="clogo" id="clogo"><img src="/img/crillon-logo.png" alt="Crillón, nos gusta hacer ciudad" width="147" height="44" onerror="document.getElementById('clogo').classList.add('fail')"><span class="cname">Crillón</span></span></div>
       <div class="right">
         <div class="who">Estoy como <span class="seg" id="who"><button type="button" data-me="Anita">Anita</button><button type="button" data-me="Nico">Nico</button></span></div>
         <div class="sync" id="sync"><i></i><span>Conectando…</span></div>

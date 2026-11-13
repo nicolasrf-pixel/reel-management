@@ -39,7 +39,6 @@ function json(data, status = 200) {
 // Logos de marca: se piden a sus sitios oficiales una vez y quedan en caché 24 horas.
 const LOGOS = {
   "/img/disperso-logo.webp": "https://estudiodisperso.com/img/logo-720.webp",
-  "/img/crillon.png": "https://www.crillon.cl/design-system-assets/logos/crillon-white.png",
 };
 
 async function logo(request, ctx, upstream) {
