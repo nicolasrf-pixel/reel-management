@@ -36,9 +36,29 @@ function json(data, status = 200) {
   });
 }
 
+// Logos de marca: se piden a sus sitios oficiales una vez y quedan en caché 24 horas.
+const LOGOS = {
+  "/img/disperso-logo.webp": "https://estudiodisperso.com/img/logo-720.webp",
+  "/img/crillon.png": "https://www.crillon.cl/design-system-assets/logos/crillon-white.png",
+};
+
+async function logo(request, ctx, upstream) {
+  const cache = caches.default;
+  const hit = await cache.match(request);
+  if (hit) return hit;
+  let up;
+  try { up = await fetch(upstream); } catch (e) { return new Response("logo no disponible", { status: 502 }); }
+  const type = up.headers.get("content-type") || "";
+  if (!up.ok || !type.startsWith("image/")) return new Response("logo no disponible", { status: 502 });
+  const res = new Response(up.body, { headers: { "content-type": type, "cache-control": "public, max-age=86400" } });
+  ctx.waitUntil(cache.put(request, res.clone()));
+  return res;
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (request.method === "GET" && LOGOS[url.pathname]) return logo(request, ctx, LOGOS[url.pathname]);
     if (url.pathname !== "/api/docs") return new Response("No encontrado", { status: 404 });
 
     // Clave de acceso opcional: si existe el secreto ACCESS_CODE, la API la exige.
