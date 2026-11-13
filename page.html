@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reel Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Línea gráfica: dashboard oscuro con acentos neón en degradado (magenta -> naranja), cian y violeta, sobre casi-negro azulado. Un solo tema oscuro. Fondo con resplandores suaves. */
+:root{
+  --bg:#0a0b11; --surface:#13151e; --surface-2:#1b1e2b; --ink:#f2f3f8; --muted:#8f94a8; --line:#272b3a; --line-2:#333850;
+  --accent:#ff2e7e; --accent-2:#ff8a3d; --accent-ink:#0a0b11; --cyan:#28e0cf; --violet:#9b6dff;
+  --warn:#ffb24d; --warn-bg:rgba(255,178,77,.09); --warn-line:rgba(255,178,77,.34);
+  --grad:linear-gradient(92deg,#ff2e7e 0%,#ff8a3d 100%);
+  --display:"Sora",system-ui,sans-serif;
+  --body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:14px; --gap:28px;
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset,0 14px 40px -20px rgba(0,0,0,.8);
+  --glow:0 0 0 1px rgba(255,46,126,.35),0 10px 30px -10px rgba(255,46,126,.45);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;max-width:100%;overflow-x:hidden}
+body{
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(900px 520px at 88% -8%, rgba(255,46,126,.16), transparent 60%),
+    radial-gradient(760px 560px at -6% 106%, rgba(40,224,207,.11), transparent 58%),
+    radial-gradient(620px 420px at 50% 120%, rgba(155,109,255,.10), transparent 60%);
+  background-attachment:fixed;
+  color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:var(--display);font-weight:700;text-wrap:balance;margin:0;line-height:1.08;letter-spacing:-.02em}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+::selection{background:rgba(255,46,126,.3)}
+.wrap{max-width:1360px;margin:0 auto;padding:48px 40px 96px;display:flex;flex-direction:column;gap:var(--gap)}
+@media (prefers-reduced-motion:no-preference){
+  .wrap>*{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+  .wrap>*:nth-child(2){animation-delay:.05s}.wrap>*:nth-child(3){animation-delay:.1s}.wrap>*:nth-child(4){animation-delay:.15s}.wrap>*:nth-child(n+5){animation-delay:.2s}
+  @keyframes rise{from{opacity:.001;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+header.top{display:flex;flex-wrap:wrap;gap:20px 40px;align-items:flex-end;justify-content:space-between;padding-bottom:8px}
+header.top h1{font-size:clamp(44px,6vw,74px);font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+header.top h1::after{content:"Crillón · Parque Cousiño";display:block;font-family:var(--body);font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);margin-top:16px;-webkit-text-fill-color:var(--cyan)}
+header.top p{margin:14px 0 0;color:var(--muted);max-width:58ch;font-size:17px}
+.right{display:flex;flex-direction:column;gap:12px;align-items:flex-end}
+.who{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;gap:4px}
+.seg button{background:transparent;border:0;border-radius:999px;padding:8px 20px;cursor:pointer;font-weight:600;font-size:14px;color:var(--muted);transition:background .2s,color .2s}
+.seg button[aria-pressed="true"]{background:var(--grad);color:var(--accent-ink)}
+.sync{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.sync.ok i{background:var(--cyan);box-shadow:0 0 0 4px rgba(40,224,207,.18),0 0 10px rgba(40,224,207,.6)} .sync.local i{background:var(--warn);box-shadow:0 0 10px rgba(255,178,77,.5)}
+.gate{display:none;gap:12px;align-items:center;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:var(--r);padding:16px 20px;flex-wrap:wrap}
+.gate.on{display:flex}
+.gate input{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad);opacity:.7}
+.stat b{display:block;font-family:var(--display);font-weight:700;font-size:40px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
+.stat:last-child{background:var(--grad);border-color:transparent}
+.stat:last-child::before{display:none}
+.stat:last-child b,.stat:last-child span{color:var(--accent-ink)}
+.stat:last-child span{opacity:.85}
+nav.tabs{display:flex;flex-wrap:wrap;gap:8px 32px;border-bottom:1px solid var(--line);margin-top:8px}
+nav.tabs a{padding:14px 0;text-decoration:none;color:var(--muted);font-weight:600;font-size:15px;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s}
+nav.tabs a:hover{color:var(--ink)}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.view{display:none;padding-top:8px} .view.on{display:block}
+.legend{color:var(--muted);font-size:15px;margin:0 0 24px;max-width:72ch}
+.btn{background:var(--surface);border:1px solid var(--line-2);border-radius:999px;padding:9px 18px;cursor:pointer;font-weight:600;font-size:14px;color:var(--ink);transition:border-color .2s,box-shadow .2s,background .2s}
+.btn:hover{border-color:var(--accent);box-shadow:0 0 0 1px rgba(255,46,126,.25)}
+.btn.primary{background:var(--grad);border-color:transparent;color:var(--accent-ink)}
+.btn.primary:hover{box-shadow:var(--glow)}
+.btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;border-color:var(--line)}
+.btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;padding:3px 10px;border-radius:99px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap;background:var(--surface)}
+.pill.s1{border-color:rgba(40,224,207,.5);color:var(--cyan);background:rgba(40,224,207,.08)}
+.pill.s2{border-color:rgba(155,109,255,.5);color:var(--violet);background:rgba(155,109,255,.1)}
+.pill.s3{border-color:rgba(255,138,61,.5);color:var(--accent-2);background:rgba(255,138,61,.1)}
+.pill.s4{background:var(--grad);border-color:transparent;color:var(--accent-ink)}
+.split{display:grid;grid-template-columns:340px minmax(0,1fr);gap:40px;align-items:start}
+.side{display:flex;flex-direction:column;gap:16px;position:sticky;top:24px}
+.side>.btns{justify-content:space-between}
+.list{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 130px);overflow:auto;padding:2px 6px 2px 2px}
+.item{display:grid;grid-template-columns:36px 1fr;gap:4px 12px;text-align:left;background:transparent;border:1px solid transparent;border-radius:12px;padding:14px;cursor:pointer;transition:background .15s,border-color .15s}
+.item:hover{background:var(--surface)}
+.item[aria-selected="true"]{background:var(--surface);border-color:var(--line-2);box-shadow:var(--shadow)}
+.item.arch{opacity:.45}
+.item .n{font-family:var(--display);font-weight:800;font-size:24px;line-height:1;font-variant-numeric:tabular-nums;grid-row:span 2;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.item .t{font-weight:600;line-height:1.35}
+.item .m{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:2px}
+.chk{font-size:14px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.chk input{accent-color:var(--accent)}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:44px 48px;display:flex;flex-direction:column;gap:28px;box-shadow:var(--shadow)}
+.sheet-head{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;padding-bottom:4px}
+.sheet-head .orig{color:var(--muted);font-size:14px;max-width:60ch}
+.meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:20px;padding:24px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r)}
+label.f{display:flex;flex-direction:column;gap:8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+label.f small{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;opacity:.85}
+label.f input,label.f select,label.f textarea{text-transform:none;letter-spacing:0;font-weight:400;font-size:16px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;padding:12px 14px;width:100%;transition:border-color .15s,box-shadow .15s}
+label.f input:focus,label.f select:focus,label.f textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,46,126,.2)}
+label.f textarea{resize:vertical;line-height:1.7;min-height:88px}
+label.f.title{gap:6px}
+label.f.title input{font-family:var(--display);font-size:clamp(28px,3.2vw,40px);font-weight:700;line-height:1.15;letter-spacing:-.02em;background:transparent;border:0;border-bottom:1px solid var(--line-2);border-radius:0;padding:4px 0 14px;color:var(--ink)}
+label.f.title input:focus{box-shadow:none;border-bottom-color:var(--accent)}
+label.f.hook textarea{font-family:var(--display);font-size:22px;font-weight:500;line-height:1.4;border:0;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;background:rgba(255,46,126,.08);padding:16px 20px;color:var(--ink)}
+label.f.warn textarea{background:var(--warn-bg);border-color:var(--warn-line)}
+#f-escenas{min-height:300px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.comments{border-top:1px solid var(--line);padding-top:32px;margin-top:8px;display:flex;flex-direction:column;gap:16px}
+.comments h3{font-size:26px}
+#cmlist{display:flex;flex-direction:column;gap:12px}
+.cm{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.cm .h{display:flex;gap:10px;align-items:baseline;font-size:12px;color:var(--muted)}
+.cm .h b{color:var(--cyan);font-size:15px}
+.cm .h button{margin-left:auto;background:none;border:0;color:var(--muted);cursor:pointer;font-size:12px;text-decoration:underline}
+.cm p{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.cmform{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.cmform textarea{flex:1;min-width:220px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;padding:12px 14px;resize:vertical;line-height:1.6}
+.calbar{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;justify-content:space-between;margin-bottom:20px}
+.calbar h2{font-size:clamp(34px,4vw,50px);font-weight:700;text-transform:capitalize;min-width:7ch;padding:0 8px}
+.months{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+.months button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 16px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);text-transform:capitalize;transition:border-color .15s,color .15s}
+.months button:hover{border-color:var(--line-2);color:var(--ink)}
+.months button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.months button small{font-weight:700;color:var(--accent);margin-left:4px}
+.months button[aria-pressed="true"] small{color:var(--bg)}
+.calwrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:40px;align-items:start}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.dow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:0 10px 6px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:12px;min-height:132px;padding:10px;display:flex;flex-direction:column;gap:5px;text-align:left;cursor:pointer;overflow:hidden;transition:border-color .15s}
+.day:hover{border-color:var(--line-2)}
+.day.out{background:transparent;border:0;cursor:default;min-height:0}
+.day.wknd{background:rgba(255,255,255,.015)}
+.day.today .num{background:var(--grad);color:var(--accent-ink);border-radius:99px;padding:1px 8px}
+.day[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 18px -4px rgba(255,46,126,.5)}
+.day .top{display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:13px;margin-bottom:4px}
+.day .num{font-weight:700;font-variant-numeric:tabular-nums}
+.day .fer{color:var(--accent-2);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip{font-size:12px;line-height:1.35;border-radius:6px;padding:3px 7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;font-weight:600}
+.chip.pub{background:var(--grad);color:var(--accent-ink)}
+.chip.rec{border:1px dashed rgba(40,224,207,.6);color:var(--cyan)}
+.chip.note{color:var(--muted);font-style:italic;font-weight:400;padding-left:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:18px;position:sticky;top:24px;box-shadow:var(--shadow)}
+.panel h3{font-size:30px}
+.panel h3::first-letter{text-transform:uppercase}
+.panel>.pill{align-self:flex-start}
+.panel .evrow .btns{flex-wrap:nowrap}
+.panel .evrow{display:flex;gap:10px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:14px;font-size:15px}
+.panel .evrow button{flex:none}
+.key{display:flex;gap:20px;font-size:13px;color:var(--muted);flex-wrap:wrap;margin-top:18px;align-items:center}
+.jor,.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:32px 36px;box-shadow:var(--shadow)}
+.jor{margin-bottom:24px}
+.jor h3{font-size:30px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.jor .sub{color:var(--muted);margin:12px 0 24px;max-width:72ch}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:14px;border-top:1px solid var(--line)}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-top:0;padding-top:0}
+td:first-child,th:first-child{padding-left:0}
+td a{color:var(--cyan);font-weight:600;text-decoration:none}
+td a:hover{text-decoration:underline}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px}
+.card h3{font-size:26px;margin-bottom:16px}
+.card ul{margin:0;padding-left:20px} .card li{margin:10px 0}
+.card li::marker{color:var(--accent)}
+.card.warn{background:var(--warn-bg);border-color:var(--warn-line);box-shadow:none}
+.card.warn li::marker{color:var(--warn)}
+.addrow{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:28px;padding-top:28px;border-top:1px solid var(--line)}
+.addrow label.f{flex:1;min-width:200px}
+.src{color:var(--muted);font-size:14px;margin-top:28px} .src a{color:var(--cyan)}
+@media (max-width:1100px){
+  .split,.calwrap{grid-template-columns:1fr}
+  .side,.panel{position:static}
+  .list{max-height:420px;overflow-y:auto;overflow-x:hidden}
+  .item{border-color:var(--line);background:var(--surface)}
+  .sheet{padding:32px}
+}
+@media (max-width:700px){
+  .wrap{padding:28px 18px 64px;gap:22px}
+  .right{align-items:flex-start}
+  .sheet,.jor,.card,.panel{padding:24px 20px;border-radius:16px}
+  .meta{padding:16px;gap:14px}
+  .two{grid-template-columns:1fr}
+  .grid{gap:4px}
+  .day{min-height:72px;padding:5px;border-radius:8px}
+  .chip{font-size:10px;padding:1px 4px}
+  .chip .tt{display:none}
+  .dow{padding:0 4px 4px;letter-spacing:.04em}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Reel Management</h1>
+      <p>Espacio de trabajo de Anita y Nico para los reels de Crillón: guiones, fechas, equipo y comentarios. Todo lo que ves se puede editar.</p>
+    </div>
+    <div class="right">
+      <div class="who">Estoy como <span class="seg" id="who"><button type="button" data-me="Anita">Anita</button><button type="button" data-me="Nico">Nico</button></span></div>
+      <div class="sync" id="sync"><i></i><span>Conectando…</span></div>
+    </div>
+  </header>
+  <form class="gate" id="gate">
+    <label for="code">Este espacio pide una clave de acceso.</label>
+    <input id="code" type="password" autocomplete="off" placeholder="Clave">
+    <button class="btn primary" type="submit">Entrar</button>
+  </form>
+  <div class="stats" id="stats"></div>
+  <nav class="tabs" id="tabs">
+    <a href="#guiones">Guiones</a>
+    <a href="#calendario">Calendario</a>
+    <a href="#jornadas">Jornadas de grabación</a>
+    <a href="#equipo">Equipo</a>
+    <a href="#marca">Marca y datos</a>
+  </nav>
+
+  <section class="view" id="v-guiones">
+    <div class="split">
+      <div class="side">
+        <div class="btns"><button class="btn primary" id="b-new" type="button">Nuevo reel</button><label class="chk" for="showarch"><input type="checkbox" id="showarch"> Ver archivados</label></div>
+        <div class="list" id="list" role="listbox" aria-label="Reels"></div>
+      </div>
+      <div class="sheet" id="sheet"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-calendario">
+    <div class="calbar">
+      <div class="btns"><button class="btn" id="c-prev" type="button" aria-label="Mes anterior">‹</button><h2 id="c-title"></h2><button class="btn" id="c-next" type="button" aria-label="Mes siguiente">›</button><button class="btn" id="c-today" type="button">Hoy</button></div>
+      <div class="btns"><button class="btn" id="y-prev" type="button" aria-label="Año anterior">‹</button><b id="y-title"></b><button class="btn" id="y-next" type="button" aria-label="Año siguiente">›</button></div>
+    </div>
+    <div class="months" id="months"></div>
+    <div class="calwrap">
+      <div>
+        <div class="grid" id="grid"></div>
+        <div class="key"><span><span class="chip pub" style="display:inline-block">Publicación</span></span><span><span class="chip rec" style="display:inline-block">Grabación</span></span><span>Toca un día para agendar un reel o dejar una nota.</span></div>
+      </div>
+      <div class="panel" id="panel"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-jornadas">
+    <p class="legend">Jornadas agrupadas por locación para grabar varios reels de una vez. Sirve como hoja de llamado: quién tiene que estar y qué hay que llevar.</p>
+    <div id="jor"></div>
+  </section>
+
+  <section class="view" id="v-equipo">
+    <div class="card">
+      <h3>Personas disponibles para guiones y reels</h3>
+      <p class="legend">Anita define quién del equipo de Crillón participa. Las personas que agregues aquí aparecen como opción en el campo Responsable de cada guion.</p>
+      <div class="tblwrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Reels a cargo</th><th></th></tr></thead><tbody id="team"></tbody></table></div>
+      <form class="addrow" id="teamform">
+        <label class="f" for="t-nombre">Nombre<input id="t-nombre" required></label>
+        <label class="f" for="t-rol">Rol<input id="t-rol" placeholder="Ejecutiva de ventas, cámara, edición…"></label>
+        <button class="btn primary" type="submit">Agregar persona</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="view" id="v-marca">
+    <div class="cols">
+      <div class="card">
+        <h3>Quién habla</h3>
+        <ul>
+          <li>Crillón desarrolla Parque Cousiño, en Peñalolén. Sala de ventas en Av. Luis Cousiño 6170.</li>
+          <li>Lemas del sitio: «El equilibrio que buscas» y «El equilibrio que mereces».</li>
+          <li>Tono: cálido, sereno, de barrio. El humor de oficina funciona si termina mostrando el lugar o al equipo.</li>
+          <li>Idea central: venden una forma de vivir, no metros cuadrados.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Datos que se pueden usar en pantalla</h3>
+        <ul>
+          <li>Más de 30 hectáreas de áreas verdes.</li>
+          <li>Más de 2.700 familias en el barrio.</li>
+          <li>12 colegios cerca.</li>
+          <li>Casa Parque (talleres, deporte, celebraciones).</li>
+          <li>Ciclovías, cableado soterrado, paisajismo nativo.</li>
+          <li>Vistas a la cordillera, la ciudad y la viña.</li>
+          <li>Sistema VIA de cámaras monitoreadas.</li>
+          <li>«Dentro de Santiago, no en la periferia».</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Proyectos</h3>
+        <ul>
+          <li><b>Edificio Efika</b>: 2 y 3 dormitorios, 2 baños, 56 a 88 m² útiles, todos con terraza y logia. Dos edificios de 4 pisos con ascensor. Salida a Vespucio Sur y micros al frente; colegios, comercio y servicios cerca.</li>
+          <li><b>Edificio Los Cipreses</b>: 3 dormitorios, 95 a 132 m² útiles, entrega inmediata.</li>
+          <li><b>Condominio Magnolia</b>: casas de 3 y 4 dormitorios, 117 a 150 m², venta en verde.</li>
+          <li><b>Los Robles</b>: 2 y 3 dormitorios, próximamente.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Ganchos comerciales</h3>
+        <ul>
+          <li><b>Fórmula 12 años</b>: 5% al firmar la promesa, 15% con crédito Crillón en hasta 144 cuotas, 80% hipotecario. Sujeto a evaluación de Crillón.</li>
+          <li><b>Fórmula 12 meses</b>: arriendo de 12 meses que se abona al pie.</li>
+          <li><b>Referidos</b>: gift card de $1.000.000 para quien refiere y para quien compra.</li>
+          <li><b>Carolina IA</b>: WhatsApp que responde 24/7.</li>
+          <li>Sala de ventas: 11:00 a 14:00 y 15:00 a 19:00.</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>Validar antes de poner en un reel</h3>
+        <ul>
+          <li><b>La huerta se cambia de lugar.</b> No mostrarla ni nombrarla hasta que esté en su nueva ubicación. El sitio todavía la menciona.</li>
+          <li>Precio «desde» de Los Cipreses: el sitio muestra UF 10.400 en la portada y UF 7.400 en el listado.</li>
+          <li>Precio «desde» de Efika: UF 4.500 en la portada y UF 4.000 en el listado.</li>
+          <li>Efika aparece como «venta en verde» y como «venta en blanco».</li>
+          <li>El sitio no nombra los colegios, comercios ni supermercados cercanos a Efika. Hay que levantarlos en terreno para el reel 1.</li>
+          <li>Fórmula 12: un texto dice solo Los Cipreses y otro agrega Los Olmos. El link a términos y condiciones no abre nada.</li>
+          <li>Horario: la portada dice martes a domingo; la página de proyectos, lunes a domingo.</li>
+          <li>El sitio no menciona pilotos. Confirmar cuál está disponible para la jornada C.</li>
+          <li>Por eso ningún guion lleva precios. Si quieren sumarlos, que los confirme el área comercial.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Reglas de producción</h3>
+        <ul>
+          <li>Vertical 9:16, texto dentro de la zona segura, subtítulos siempre.</li>
+          <li>Los audios de series, películas y canciones suelen estar bloqueados en cuentas comerciales de Instagram. Revisarlo antes de grabar; cada guion trae un plan B.</li>
+          <li>Vecinos, niños y fachadas de locales solo con autorización.</li>
+          <li>Todo reel con financiamiento lleva la frase legal y pasa por comercial.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="src">Fuente de los datos: <a href="https://www.crillon.cl/">crillon.cl</a> (portada, El Barrio, Por qué Crillón, Proyectos, Edificio Efika y Fórmula 12), revisado el 12 de noviembre de 2026.</p>
+  </section>
+</div>
+
+<script>
+var ESTADOS=["Sugerencia","Guion aprobado","Grabado","En edición","Publicado"];
+var JORNADAS={
+  A:{nombre:"Jornada A · Barrio y entorno",fecha:"2026-11-18",detalle:"Exteriores de Parque Cousiño y entorno de Efika. Partir a las 15:30 y cerrar con la hora dorada (el sol se pone cerca de las 20:20). Gimbal, dron si hay permiso, micrófono de solapa."},
+  B:{nombre:"Jornada B · Sala de ventas",fecha:"2026-11-20",detalle:"Av. Luis Cousiño 6170. Grabar de 9:00 a 11:00, antes de abrir al público. Todo el equipo comercial en cámara."},
+  C:{nombre:"Jornada C · Piloto",fecha:"2026-11-25",detalle:"Piloto disponible (confirmar cuál; Los Cipreses tiene entrega inmediata). Mañana con luz natural. Piloto ordenado y sin letreros de precio."},
+  D:{nombre:"Jornada D · Navidad y cierre de año",fecha:"2026-12-09",detalle:"Sala de ventas decorada y exteriores al atardecer con luces. Últimos tres reels del año."}
+};
+var FERIADOS={"2026-12-08":"Feriado","2026-12-25":"Navidad","2027-01-01":"Año Nuevo"};
+var FIELDS=["titulo","formato","estado","jornada","grab","pub","dur","resp","talento","loc","proyecto","gancho","escenas","pantalla","audio","cta","prod","ojo","archivado","por","creado"];
+var COLS=["guiones","comentarios","equipo","dias"];
+var REELS=[
+{id:"r1",n:1,titulo:"Efika: todo lo que te queda cerca",formato:"Recorrido",jornada:"A",grab:"2026-11-18",pub:"2026-11-28",dur:"30 s",talento:"1 ejecutivo/a como anfitrión",loc:"Entorno de Edificio Efika: comercio de barrio, colegio, restaurante y supermercado más cercanos",proyecto:"Edificio Efika",
+gancho:"«Si vivieras en Efika, ¿qué te queda cerca? Salí con el cronómetro a comprobarlo.»",
+escenas:"1. (0-3 s) La anfitriona en la vereda frente al terreno de Efika. Muestra el celular con el cronómetro en 00:00, lo echa a andar y sale caminando.\n2. (3-9 s) NEGOCIOS. Llega a la panadería o el almacén del barrio y sale con una bolsa. Tiempo real en pantalla. «El pan: resuelto».\n3. (9-15 s) COLEGIO. Pasa frente a la entrada de un colegio. «El colegio: sin subirse al auto».\n4. (15-21 s) RESTAURANTE. Se sienta en una terraza y le traen un café. «El almuerzo del domingo: aquí mismo».\n5. (21-26 s) SUPERMERCADO. Sale empujando un carro. «Y la compra del mes».\n6. (26-30 s) Vuelve al punto de partida y detiene el cronómetro. Plano abierto del barrio con la cordillera. «Todo eso en menos de lo que dura un taco».",
+pantalla:"Cronómetro real en una esquina durante todo el reel.\nRótulo en cada parada: NEGOCIOS · COLEGIO · RESTAURANTE · SUPERMERCADO, con el nombre del lugar y los minutos reales.\nCierre: «Edificio Efika. 2 y 3 dormitorios en Peñalolén, con todo cerca».",
+audio:"Voz en directo con solapa y una base instrumental con ritmo de caminata, de la biblioteca comercial.",
+cta:"CTA: «Ven a hacer el recorrido. Agenda tu visita en el link del perfil».\nCaption: Cronometramos lo que queda cerca de Efika: negocios, colegios, restaurantes y supermercado. Salida a Vespucio Sur y micros al frente.",
+prod:"Visita previa para elegir los cuatro lugares y medir los tiempos. Pedir permiso a cada local para grabar su fachada. Celular con cronómetro, gimbal, solapa, bolsa de pan, carro.",
+ojo:"Faltan los nombres: el sitio dice que hay colegios, comercio y servicios cerca de Efika, pero no cuáles ni a qué distancia. Anita, ¿qué cuatro lugares quieren destacar? Si alguno queda lejos a pie, mostrar ese tramo en auto o bici y decirlo. Tiempos reales y sin precios."},
+{id:"r2",n:2,titulo:"Disculpa, estoy grabando",formato:"Humor de equipo",jornada:"B",grab:"2026-11-20",pub:"2026-12-03",dur:"20 s",talento:"1 ejecutiva seria + 3 colegas que interrumpen",loc:"Sala de ventas",proyecto:"Marca",
+gancho:"Ejecutiva muy formal a cámara: «Hola, hoy les quiero mostrar…» y alguien cruza por detrás con una torta.",
+escenas:"1. (0-3 s) Plano medio, tono de video institucional. «Hola, hoy les quiero mostrar…». Cruza un colega con una torta. Ella, sin mirar: «Disculpa, estoy grabando».\n2. (3-8 s) Retoma. «…nuestra sala de ventas, donde…». Otro colega le pasa unas llaves por delante de la cámara: «¿Son las del 316?». «Disculpa. Estoy. Grabando».\n3. (8-13 s) Retoma, ya tensa. Se asoma una tercera: «Llegó una familia a ver el piloto».\n4. (13-17 s) Ella cambia la cara, se saca el micrófono: «Eso sí. Corten».\n5. (17-20 s) Se va caminando rápido. La cámara queda sola apuntando a la maqueta.",
+pantalla:"Arriba, fijo: «Intento n.º 7 de grabar un video serio».\nCierre: «Las visitas van primero».",
+audio:"Sonido directo. Sin música, o un toque cómico suave en los cortes.",
+cta:"CTA: «Interrúmpenos tú también. Martes a domingo en la sala de ventas».\nCaption: Algún día terminaremos este video. Mientras tanto, ven a conocernos.",
+prod:"Torta o bandeja, llavero, trípode fijo. Tres o cuatro tomas seguidas; funciona mejor sin ensayar demasiado.",
+ojo:"Interpreté el formato como «me interrumpen mientras grabo». Si el trend de referencia es otro, pásenme el link y lo ajusto."},
+{id:"r3",n:3,titulo:"Mostrar el parque en general",formato:"Paisaje",jornada:"A",grab:"2026-11-18",pub:"2026-11-24",dur:"15 s",talento:"Sin talento. Vecinos de fondo solo con permiso",loc:"Parques, plazas y corredores verdes del barrio",proyecto:"Barrio Parque Cousiño",
+gancho:"Texto sobre una toma verde y abierta: «Esto no es el sur. Es Peñalolén».",
+escenas:"1. (0-3 s) Toma abierta de árboles y pasto con la cordillera al fondo. Entra el texto del gancho.\n2. (3-5 s) Detalle: hojas a contraluz.\n3. (5-7 s) Sendero con alguien paseando un perro, de espaldas.\n4. (7-9 s) Plaza con juegos.\n5. (9-11 s) Ciclovía en movimiento, cámara baja.\n6. (11-15 s) Dron o plano alto que sube y muestra el barrio completo con la cordillera.",
+pantalla:"1: «Esto no es el sur».\n2: «Es Peñalolén».\n6: «Más de 30 hectáreas de áreas verdes. Dentro de Santiago».",
+audio:"Instrumental tranquilo con un golpe marcado para el corte de la toma 6. Sonido ambiente de pájaros debajo.",
+cta:"CTA: «Guárdalo para tu próxima visita».\nCaption: Más de 30 hectáreas de parques, plazas y corredores verdes. El equilibrio que buscas queda en Parque Cousiño.",
+prod:"Dron (revisar permiso de vuelo y aviso a la administración), gimbal, filtro ND. Es el primer reel del calendario: cuidar el color.",
+ojo:"Abre la parrilla porque instala el lugar antes de los reels de humor."},
+{id:"r4",n:4,titulo:"POV: le sacas galletas a la jefa y te pillan",formato:"Humor de equipo",jornada:"B",grab:"2026-11-20",pub:"2026-11-26",dur:"15 s",talento:"La jefa + 1 integrante del equipo",loc:"Cocina o escritorio de la sala de ventas",proyecto:"Marca",
+gancho:"La jefa, con el paquete abierto en la mano: «¿Me sacaste una galleta?».",
+escenas:"1. (0-3 s) Plano de ella con el paquete. «¿Me sacaste una galleta?».\n2. (3-5 s) Contraplano: él, con migas en el chaleco, muy serio. «No».\n3. (5-9 s) Ella apunta hacia arriba, al borde del encuadre: «¿Y por qué aquí dice…?». Aparece el texto del POV justo donde apunta.\n4. (9-12 s) Él levanta la vista, lee el texto, traga.\n5. (12-15 s) Corte: él reponiendo el paquete sobre la mesa de visitas.",
+pantalla:"Aparece recién en la escena 3: «POV: le sacas galletas a la jefa y te pillan».\nCierre: «Las galletas de la sala de ventas son para las visitas».",
+audio:"Sonido directo. Un silencio largo antes del «No».",
+cta:"CTA: «Ven por la tuya. Av. Luis Cousiño 6170».\nCaption: Caso cerrado. Quedan galletas para quienes vengan a conocer el barrio este fin de semana.",
+prod:"Dos paquetes de galletas, migas. El chiste depende de que ella apunte al lugar exacto donde irá el texto: marcarlo con cinta fuera de cuadro.",
+ojo:"El texto no puede estar desde el inicio; si aparece antes de que ella lo señale, se pierde el remate."},
+{id:"r5",n:5,titulo:"OMG Friends (Joey)",formato:"Tendencia",jornada:"C",grab:"2026-11-25",pub:"2026-12-10",dur:"10 s",talento:"1 ejecutivo/a + 1 «cliente» de espaldas",loc:"Piloto, living con salida a terraza",proyecto:"Los Cipreses",
+gancho:"Texto: «Cuando el cliente abre la cortina del piloto».",
+escenas:"1. (0-3 s) Cliente de espaldas camina hacia el ventanal. Ejecutiva detrás, tranquila.\n2. (3-5 s) El cliente corre la cortina. Se ve la cordillera.\n3. (5-8 s) Corte a la ejecutiva haciendo la reacción de asombro exagerado, sincronizada con el audio.\n4. (8-10 s) Plano limpio de la vista, sin gente.",
+pantalla:"1: «Cuando el cliente abre la cortina del piloto».\n4: «3 dormitorios. Entrega inmediata».",
+audio:"El audio de la reacción de Joey. Plan B: grabar la reacción con voz propia, sin el audio original.",
+cta:"CTA: «Ven a poner tu propia cara. Agenda tu visita».\nCaption: Pasa todas las semanas.",
+prod:"Cortina o blackout cerrado para la revelación. Grabar con buena visibilidad de la cordillera.",
+ojo:"Revisar que el audio esté disponible para cuenta comercial. No usar imágenes de la serie. Alternativa de gancho: «Cuando te cuentan que el 15% del pie se paga en hasta 144 cuotas»."},
+{id:"r6",n:6,titulo:"Emotional Movie",formato:"Emocional",jornada:"C",grab:"2026-11-25",pub:"2026-12-19",dur:"25 s",talento:"1 familia (o equipo actuando) + 1 ejecutivo/a",loc:"Acceso del edificio, pasillo, puerta y living del piloto",proyecto:"Los Cipreses",
+gancho:"Pantalla negra, texto de tráiler: «Este verano…».",
+escenas:"1. (0-3 s) Negro. «Este verano…». Golpe de música.\n2. (3-7 s) Cámara lenta: una mano recibe un sobre. «Una familia».\n3. (7-11 s) Cámara lenta: pasos por el pasillo, un niño corre adelante. «Un pasillo muy largo».\n4. (11-16 s) Primerísimo plano de la llave entrando a la cerradura. «Una llave».\n5. (16-21 s) La puerta se abre, luz de frente, la familia entra en silueta.\n6. (21-25 s) Título de película sobre el living vacío.",
+pantalla:"Tipografía de cartelera, centrada.\nTítulo final: «LA ENTREGA». Debajo: «Próximamente en tu vida. Entrega inmediata en Los Cipreses».",
+audio:"Música épica de tráiler de la biblioteca comercial. Sin diálogo.",
+cta:"CTA: «Protagoniza la tuya. Escríbenos por WhatsApp».\nCaption: Basada en hechos reales que pasan cada mes en Parque Cousiño.",
+prod:"Sobre, llavero con el logo, 60 cuadros por segundo para la cámara lenta, lente luminoso. Barras negras de cine en edición.",
+ojo:"Interpreté «Emotional Movie» como tráiler de cine de un momento cotidiano. Si usan familia real, autorización de imagen firmada."},
+{id:"r7",n:7,titulo:"Flores y plantas: una de interior, una de exterior",formato:"Tip útil",jornada:"A",grab:"2026-11-18",pub:"2026-12-05",dur:"30 s",talento:"Paisajista o jardinero del barrio (ideal) o ejecutivo/a",loc:"Jardín del barrio y living del piloto",proyecto:"Barrio / piloto",
+gancho:"«Una planta para adentro y una para afuera que aguantan el verano de Santiago».",
+escenas:"1. (0-3 s) El paisajista en el jardín, con una planta en cada mano. Dice el gancho.\n2. (3-12 s) EXTERIOR. Lavanda a pleno sol. «Afuera: lavanda. Sol directo y riego profundo, pocas veces por semana. Con poca agua florece igual».\n3. (12-14 s) Transición: tapa el lente con la mano y la saca ya dentro del piloto.\n4. (14-24 s) INTERIOR. Lengua de suegra cerca de una ventana. «Adentro: lengua de suegra. Luz indirecta y agua cada dos o tres semanas. Si la riegas de más, la pierdes».\n5. (24-30 s) Plano del jardín del barrio. «Así cuidamos nosotros el paisajismo del parque: especies que piden poca agua».",
+pantalla:"«AFUERA: lavanda · sol directo · riego profundo y espaciado».\n«ADENTRO: lengua de suegra · luz indirecta · agua cada 2 a 3 semanas».",
+audio:"Voz en directo con solapa. Base acústica muy baja.",
+cta:"CTA: «Guárdalo y mándaselo a quien se le mueren todas».\nCaption: Tip del equipo que cuida las áreas verdes de Parque Cousiño. ¿Qué planta quieres que revisemos la próxima semana?",
+prod:"Una lavanda y una lengua de suegra en macetero. El exterior se graba en la jornada A y el interior en la C (25 nov); mismo vestuario los dos días.",
+ojo:"Que el paisajista del barrio valide los tips antes de grabar. Puede transformarse en serie semanal si funciona."},
+{id:"r8",n:8,titulo:"¿Dónde estoy cuando alguien me pide algo estúpido?",formato:"Humor de equipo",jornada:"C",grab:"2026-11-25",pub:"2026-12-17",dur:"20 s",talento:"1 ejecutivo/a",loc:"Piloto: walk-in closet, terraza, logia",proyecto:"Los Cipreses",
+gancho:"Texto: «Dónde estoy cuando me piden…» sobre un escritorio vacío con la silla todavía girando.",
+escenas:"1. (0-3 s) Escritorio vacío, silla girando. Entra el gancho.\n2. (3-8 s) Texto: «…3 dormitorios, con vista, por el precio de un estacionamiento». Corte: el ejecutivo sentado dentro del walk-in closet, mirando el celular.\n3. (8-13 s) Texto: «…que le baje un piso al edificio porque le tapa el sol». Corte: en la terraza con un café, mirando la cordillera.\n4. (13-17 s) Texto: «…una casa nueva pero que ya tenga los árboles grandes». Corte: detrás de un árbol del parque. Se asoma: «Esa sí la tenemos».\n5. (17-20 s) Vuelve caminando a la sala de ventas.",
+pantalla:"Las tres peticiones, una por escena.\nCierre: «Hay cosas que sí podemos hacer. Pregúntanos».",
+audio:"Base cómica de la biblioteca comercial. Solo una frase hablada, la del árbol.",
+cta:"CTA: «Tráenos tu petición rara. Carolina responde por WhatsApp a cualquier hora».\nCaption: Nos han pedido de todo. Lo de los árboles grandes es verdad: el barrio tiene 30 años.",
+prod:"Café, silla giratoria. La escena del árbol se graba en exterior cerca del piloto.",
+ojo:"Reírse de las peticiones, no de los clientes. Mantener los ejemplos absurdos y sin referencia a nadie real."},
+{id:"r9",n:9,titulo:"¿Cuál es tu talento más inútil?",formato:"Equipo",jornada:"B",grab:"2026-11-20",pub:"2026-12-24",dur:"25 s",talento:"4 o 5 integrantes del equipo",loc:"Sala de ventas, cada uno en su puesto",proyecto:"Marca",
+gancho:"Micrófono de mano entrando a cuadro: «¿Cuál es tu talento más inútil?».",
+escenas:"1. (0-3 s) Pregunta fuera de cámara y micrófono a la primera persona.\n2. (3-8 s) Persona 1 muestra el suyo (ejemplo: mover las orejas).\n3. (8-13 s) Persona 2 (ejemplo: imitar el sonido del ascensor).\n4. (13-18 s) Persona 3 (ejemplo: decir el abecedario al revés).\n5. (18-23 s) Última persona: «Sé de memoria el número de cada depto y hacia dónde mira». Le preguntan uno. Responde al tiro.\n6. (23-25 s) Voz fuera de cámara: «Ese no es inútil».",
+pantalla:"Nombre y cargo de cada persona.\nCierre: «El equipo que te va a recibir».",
+audio:"Sonido directo con micrófono de mano. Risas reales, sin música.",
+cta:"CTA: «¿Y el tuyo? Cuéntanos en los comentarios».\nCaption: Feliz Nochebuena de parte de un equipo con talentos discutibles.",
+prod:"Micrófono de mano (aunque sea de utilería). Pedir a cada uno su talento real el día anterior; no inventarlos.",
+ojo:"Sale el 24 de diciembre: liviano, sin venta. El remate debe ser un talento verdadero de alguien del equipo."},
+{id:"r10",n:10,titulo:"Persona dibujada recorriendo el piloto",formato:"Animación",jornada:"C",grab:"2026-11-25",pub:"2026-12-12",dur:"20 s",talento:"Sin talento en cámara. Animador/a 2D en postproducción",loc:"Piloto completo",proyecto:"Los Cipreses",
+gancho:"Un personaje dibujado a línea blanca toca el timbre del piloto real y la puerta se abre.",
+escenas:"1. (0-3 s) Puerta del piloto. El dibujo toca el timbre; la puerta se abre de verdad.\n2. (3-7 s) Living: el dibujo se tira al sofá y el cojín se hunde.\n3. (7-10 s) Cocina: abre el refrigerador y mira adentro.\n4. (10-13 s) Dormitorio principal: mide el walk-in closet abriendo los brazos.\n5. (13-17 s) Terraza: se apoya en la baranda y mira la cordillera.\n6. (17-20 s) Dibuja un corazón en el aire, que queda flotando sobre la vista.",
+pantalla:"Sin texto hasta el final: «Imagínate aquí. Ahora ven a verlo».",
+audio:"Base instrumental juguetona. Efectos: timbre, sofá, puerta del refrigerador.",
+cta:"CTA: «Agenda tu recorrido por el piloto».\nCaption: Lo dibujamos para que te hagas una idea. El piloto de verdad está abierto de martes a domingo.",
+prod:"Grabar con trípode y movimientos lentos, dejando espacio vacío donde irá el personaje. Mover a mano la puerta, el cojín y el refrigerador para que la animación calce. Calcular de 8 a 12 horas de animación.",
+ojo:"Es el reel más caro de producir. Plan B sin animador: figura de papel recortada, movida cuadro a cuadro. Personaje propio, no parecido a ninguno conocido."},
+{id:"r11",n:11,titulo:"Te mereces la casa que siempre soñaste",formato:"Emocional",jornada:"D",grab:"2026-12-09",pub:"2026-12-31",dur:"20 s",talento:"1 niño o niña dibujando (manos) + familia de espaldas",loc:"Mesa con lápices y fachada de una casa del barrio",proyecto:"Condominio Magnolia",
+gancho:"Manos de un niño dibujan una casa con lápices de cera. Texto: «La dibujaste a los 6 años».",
+escenas:"1. (0-4 s) Plano cenital del dibujo: casa, árbol, sol, familia de palitos.\n2. (4-8 s) El niño agrega una cordillera detrás.\n3. (8-12 s) Corte por coincidencia: el dibujo se funde con una casa real del barrio, mismo encuadre, árbol al lado, cordillera atrás.\n4. (12-16 s) Una familia entra a cuadro de espaldas y camina hacia la puerta.\n5. (16-20 s) Queda el plano de la casa con el texto final.",
+pantalla:"1: «La dibujaste a los 6 años».\n3: «Tenía un árbol, un patio y la cordillera atrás».\n5: «Te mereces la casa que siempre soñaste. Que 2027 sea el año».",
+audio:"Piano suave de la biblioteca comercial. Sonido del lápiz sobre el papel al inicio.",
+cta:"CTA: «Empieza el año visitándola».\nCaption: El equilibrio que mereces. Casas de 3 y 4 dormitorios en Condominio Magnolia, Parque Cousiño.",
+prod:"Lápices de cera, hojas. Sacar primero la foto de la fachada y dibujar calcando ese encuadre para que el corte calce.",
+ojo:"Magnolia está en venta en verde: si aún no hay casa terminada, usar una casa existente del barrio y decirlo en el caption. Autorización para el menor."},
+{id:"r12",n:12,titulo:"Top 5 películas de Navidad, según una inmobiliaria",formato:"Humor / lista",jornada:"D",grab:"2026-12-09",pub:"2026-12-15",dur:"35 s",talento:"1 ejecutivo/a con gorro de Navidad",loc:"Sala de ventas decorada, junto a la maqueta",proyecto:"Marca",
+gancho:"«Top 5 películas de Navidad, evaluadas como propiedades».",
+escenas:"1. (0-3 s) A cámara, con carpeta de tasador. Dice el gancho.\n2. (3-9 s) «5. Duro de matar. Edificio corporativo, pésima administración. No recomendado».\n3. (9-15 s) «4. El Grinch. Vista privilegiada, cero conectividad y un solo vecino. Complicado».\n4. (15-21 s) «3. El descanso. Dos casas lindas, pero aquí nadie querría hacer el intercambio».\n5. (21-27 s) «2. El Expreso Polar. Buen transporte a la puerta. Pasa una vez al año».\n6. (27-33 s) «1. Mi pobre angelito. Casa enorme, barrio bonito. Le faltó seguridad por diseño».\n7. (33-35 s) Cierra la carpeta. «Nosotros tenemos cámaras».",
+pantalla:"Número y título de cada película con una nota en estrellas de tasador.\nCierre: «Seguridad por diseño. Sistema VIA en Parque Cousiño».",
+audio:"Voz en directo. Cascabeles genéricos de la biblioteca comercial.",
+cta:"CTA: «¿Cuál nos faltó? Te leemos».\nCaption: Deformación profesional. Felices fiestas desde Parque Cousiño.",
+prod:"Gorro, carpeta, decoración navideña. Tarjetas gráficas hechas por diseño.",
+ojo:"Solo títulos y texto: no usar afiches, escenas ni música de las películas."},
+{id:"r13",n:13,titulo:"Your problem, our solution",formato:"Comercial",jornada:"B",grab:"2026-11-20",pub:"2026-12-01",dur:"25 s",talento:"1 «cliente» + 1 ejecutivo/a",loc:"Sala de ventas, escritorio y maqueta",proyecto:"Los Cipreses / Fórmula 12",
+gancho:"Cliente a cámara, preocupado: «No tengo el pie completo».",
+escenas:"1. (0-3 s) PROBLEMA. Cliente: «No tengo el pie completo».\n2. (3-9 s) SOLUCIÓN. Ejecutiva desliza una hoja: «5% al firmar. 15% con nosotros, en hasta 144 cuotas. 80% con el banco».\n3. (9-12 s) PROBLEMA. «No quiero irme a vivir lejos».\n4. (12-16 s) SOLUCIÓN. Ella apunta a la maqueta: «Peñalolén. Dentro de Santiago».\n5. (16-19 s) PROBLEMA. «Se me ocurren las preguntas a las 11 de la noche».\n6. (19-23 s) SOLUCIÓN. Muestra el celular: «Carolina responde por WhatsApp a esa hora».\n7. (23-25 s) El cliente toma el lápiz.",
+pantalla:"Rótulos «TU PROBLEMA» y «NUESTRA SOLUCIÓN» alternados.\nGráfico: 5% + 15% + 80%.\nLegal al pie: «Fórmula 12 sujeta a evaluación crediticia de Crillón. Solo proyectos adheridos».",
+audio:"El audio del trend si está disponible para cuenta comercial. Plan B: base rítmica con cortes marcados.",
+cta:"CTA: «Simula tu Fórmula 12 en el link del perfil».\nCaption: Tres problemas frecuentes y cómo los resolvemos. Condiciones en crillon.cl/formula-12.",
+prod:"Hoja impresa con el esquema 5/15/80, celular con el chat de Carolina abierto.",
+ojo:"Antes de publicar, comercial debe confirmar a qué proyectos aplica la Fórmula 12 (el sitio dice Los Cipreses en un lado y agrega Los Olmos en otro) y aprobar la frase legal."},
+{id:"r14",n:14,titulo:"Trend «Cool Me Maybe»",formato:"Tendencia",jornada:"B",grab:"2026-11-20",pub:"2026-12-29",dur:"15 s",talento:"Todo el equipo, 4 a 6 personas",loc:"Recorrido continuo por la sala de ventas",proyecto:"Marca",
+gancho:"Una mano entrega una tarjeta a cámara. Texto: «Acabamos de conocernos…».",
+escenas:"1. (0-3 s) Persona 1 mira a cámara, tímida, y estira una tarjeta de la sala de ventas.\n2. (3-6 s) La cámara gira: persona 2, en el mesón, hace el gesto de «llámame» con la mano.\n3. (6-9 s) Gira: persona 3 detrás de la maqueta levanta un cartel con el WhatsApp.\n4. (9-12 s) Gira: persona 4 en la puerta, con las llaves colgando de un dedo.\n5. (12-15 s) Todos juntos en la entrada haciendo el gesto de «llámame».",
+pantalla:"1: «Acabamos de conocernos…».\n5: «…pero aquí está nuestro número. +56 9 5671 5164».",
+audio:"El audio del trend. Plan B: instrumental pop animado de la biblioteca comercial, con los mismos cortes.",
+cta:"CTA: «Escríbenos. Respondemos a cualquier hora».\nCaption: Fue una locura, pero dejamos el número igual.",
+prod:"Tarjetas, cartel con el WhatsApp, llaves. Una sola toma continua con gimbal; ensayar el recorrido tres veces.",
+ojo:"No ubiqué un trend con ese nombre exacto; lo armé como pase de cámara al ritmo de la canción. Si la referencia es otra, envíenme el link. No escribir la letra de la canción en pantalla."},
+{id:"r15",n:15,titulo:"Falso marco: Emilia no sería nada sin…",formato:"Equipo",jornada:"A",grab:"2026-11-18",pub:"2026-12-26",dur:"15 s",talento:"Emilia + 4 o 5 personas del equipo",loc:"Exterior con el parque y la cordillera de fondo",proyecto:"Marca",
+gancho:"Emilia sola en un encuadre cerrado y perfecto, hablando segura a cámara. Texto: «Emilia no sería nada sin…».",
+escenas:"1. (0-4 s) Plano cerrado de Emilia: luz linda, fondo desenfocado. «Bienvenidos a Parque Cousiño…».\n2. (4-9 s) La cámara retrocede y el marco se abre: una persona sostiene el reflector, otra le sujeta el pelo contra el viento, otra tiene el guion escrito en un cartón, otra espanta a un perro.\n3. (9-12 s) Emilia se da cuenta de que ya no está sola en cuadro y se ríe.\n4. (12-15 s) Todos saludan. Detrás, el parque completo.",
+pantalla:"1: «Emilia no sería nada sin…».\n2: flechas con nombre: «…la Cata (luz)», «…el Nico (viento)», «…el guion», «…y este barrio».",
+audio:"Base instrumental que parte elegante y cambia a algo cómico cuando se abre el plano.",
+cta:"CTA: «Ven a conocer al equipo completo».\nCaption: Detrás de cada video serio hay cinco personas fuera de cuadro.",
+prod:"Reflector, cartón con el guion, ventilador o secador si no hay viento. Lente con zoom o retroceso con gimbal.",
+ojo:"Entendí «falso marco» como un encuadre que se abre y muestra lo que había fuera. Cambiar los nombres de las flechas por los reales."},
+{id:"r16",n:16,titulo:"Quita el maldito teléfono",formato:"Paisaje / tendencia",jornada:"A",grab:"2026-11-18",pub:"2026-12-08",dur:"15 s",talento:"2 personas (una graba, otra le baja el celular)",loc:"Mirador o terraza con vista a la cordillera, al atardecer",proyecto:"Barrio Parque Cousiño",
+gancho:"Vista del atardecer grabada con pulso de celular. Una mano entra a cuadro y tapa el lente.",
+escenas:"1. (0-4 s) Punto de vista del celular: cordillera rosada, encuadre tembloroso, zoom torpe.\n2. (4-6 s) Entra una mano y baja el teléfono. Voz: «Quita el teléfono. Mira».\n3. (6-8 s) Negro. Solo sonido ambiente: pájaros, viento.\n4. (8-13 s) Plano abierto y estable: dos personas de espaldas mirando la cordillera, sin celulares.\n5. (13-15 s) Texto final sobre la vista.",
+pantalla:"5: «Hay vistas que no caben en la pantalla. Ven a verla».",
+audio:"Sonido directo. Silencio real en el negro; después, una nota larga de piano.",
+cta:"CTA: «Los atardeceres son gratis. Ven el fin de semana».\nCaption: Feriado perfecto para dejar el teléfono un rato. Vistas a la cordillera desde Parque Cousiño.",
+prod:"Dos cámaras: un celular para el punto de vista y la cámara principal en trípode. Estar en posición 40 minutos antes de la puesta de sol.",
+ojo:"Sale el 8 de diciembre, feriado. Suavicé «maldito» a «Quita el teléfono» en la voz por tono de marca; el título del trend puede ir en el caption si prefieren."},
+{id:"r17",n:17,titulo:"Segundo texto con dedicatoria",formato:"Emocional",jornada:"D",grab:"2026-12-09",pub:"2026-12-22",dur:"15 s",talento:"Sin talento. Vecinos de fondo solo con permiso",loc:"Calles y plazas del barrio al anochecer, con luces",proyecto:"Barrio Parque Cousiño",
+gancho:"Primer texto sobre luces de Navidad desenfocadas: «Para quienes este año dijeron: el próximo sí nos cambiamos».",
+escenas:"1. (0-5 s) Luces desenfocadas que se van enfocando en una calle del barrio. Primer texto.\n2. (5-8 s) Ventanas encendidas, un árbol de Navidad visto desde afuera.\n3. (8-13 s) Plano abierto del barrio al anochecer. Entra el segundo texto, la dedicatoria.\n4. (13-15 s) Logo y saludo.",
+pantalla:"Texto 1: «Para quienes este año dijeron: el próximo sí nos cambiamos».\nTexto 2: «Y para las más de 2.700 familias que ya llaman a esto su barrio: felices fiestas».\nCierre: «Crillón. El equilibrio que mereces».",
+audio:"Instrumental cálido, sin letra. Sin voz.",
+cta:"CTA: ninguno comercial. «Etiqueta a quien se lo dedicarías».\nCaption: Con cariño, de parte de todo el equipo de Crillón.",
+prod:"Grabar en la hora azul, 20:30 a 21:00. Lente luminoso. Coordinar con la administración qué calles tienen luces.",
+ojo:"Interpreté el formato como dos textos seguidos, donde el segundo es la dedicatoria. Si la referencia era otra, se ajusta sin regrabar: solo cambia el texto."}
+];
+var DEF={}; REELS.forEach(function(r){ DEF[r.id]=r; });
+
+var docs={}, pending={}, timers={}, chains={}, latest={};
+var sel="r1", selDay=null, me="", showArch=false, backend=null, db=null, code="";
+var today=new Date(); today.setHours(0,0,0,0);
+var calM=new Date(today.getFullYear(),today.getMonth(),1);
+try{ me=localStorage.getItem("rm-me")||""; code=localStorage.getItem("rm-code")||""; }catch(e){}
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+function pd(s){ var p=String(s||"").split("-"); if(p.length!==3) return null; var d=new Date(+p[0],+p[1]-1,+p[2]); return isNaN(d)?null:d; }
+function iso(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+var DOW=["dom","lun","mar","mié","jue","vie","sáb"], MES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+var MESL=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+var DOWL=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+function fd(s){ var d=pd(s); return d? DOW[d.getDay()]+" "+d.getDate()+" "+MES[d.getMonth()] : "sin fecha"; }
+function pillClass(e){ var i=ESTADOS.indexOf(e); return "pill s"+(i<0?0:i); }
+
+/* modelo */
+function ids(all){
+  var out=REELS.map(function(r){return r.id;}), extra=[];
+  for(var p in docs) if(p.indexOf("guiones/")===0){ var id=p.slice(8); if(!DEF[id]) extra.push(id); }
+  extra.sort(function(a,b){ return String((docs["guiones/"+a]||{}).creado||a).localeCompare(String((docs["guiones/"+b]||{}).creado||b)); });
+  out=out.concat(extra);
+  return all? out : out.filter(function(id){ return val(id,"archivado")!=="1"; });
+}
+function num(id){ return DEF[id]? DEF[id].n : REELS.length+1+ids(true).filter(function(x){return !DEF[x];}).indexOf(id); }
+function val(id,k){
+  var o=docs["guiones/"+id]; if(o && typeof o[k]==="string") return o[k];
+  var d=DEF[id]; if(d && d[k]!==undefined) return String(d[k]);
+  return k==="estado"? (d?"Sugerencia":"Sugerencia") : "";
+}
+function label(id){ return num(id)+". "+(val(id,"titulo")||"Sin título"); }
+function team(){
+  var out=[{id:"",nombre:"Anita",rol:"Gerente de marketing, Crillón",fijo:true},{id:"",nombre:"Nico",rol:"Estrategia y contenido",fijo:true}];
+  var extra=[]; for(var p in docs) if(p.indexOf("equipo/")===0) extra.push({id:p.slice(7),nombre:String(docs[p].nombre||""),rol:String(docs[p].rol||"")});
+  extra.sort(function(a,b){return a.id.localeCompare(b.id);});
+  return out.concat(extra);
+}
+function comments(id){
+  var out=[]; for(var p in docs) if(p.indexOf("comentarios/")===0 && docs[p].reel===id) out.push({id:p.slice(12),c:docs[p]});
+  out.sort(function(a,b){ return String(a.c.ts||"").localeCompare(String(b.c.ts||"")); });
+  return out;
+}
+function note(day){ var o=docs["dias/"+day]; return o && typeof o.nota==="string" ? o.nota : ""; }
+function describe(path,body){
+  var kind=path.split("/")[0], id=path.slice(kind.length+1);
+  if(kind==="guiones") return "Reel "+num(id)+" · "+((body&&body.titulo)||val(id,"titulo")||"Sin título");
+  if(kind==="comentarios"){ var r=(body&&body.reel)||lastReel[path]||sel; return "Reel "+label(r).replace(". "," · "); }
+  if(kind==="dias"){ var d=pd(id); return "Calendario · "+(d? d.getDate()+" de "+MESL[d.getMonth()] : id); }
+  return "Equipo";
+}
+var lastReel={};
+function uid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+/* guardado: tres destinos posibles (datos del artefacto, API de Cloudflare, este navegador) */
+function setSync(kind,txt){ var el=document.getElementById("sync"); el.className="sync "+kind; el.lastElementChild.textContent=txt; }
+function saveLocal(){ try{ localStorage.setItem("rm-docs",JSON.stringify(docs)); }catch(e){} }
+function loadLocal(){ try{ var raw=localStorage.getItem("rm-docs"); if(raw){ var o=JSON.parse(raw); if(o && typeof o==="object") docs=o; } }catch(e){} }
+function api(method,path,body){
+  var h={"x-access-code":code}; if(body) h["content-type"]="application/json";
+  if(path){ h["x-user"]=encodeURIComponent(me||"Alguien"); h["x-label"]=encodeURIComponent(describe(path,body)); }
+  return fetch("/api/docs"+(path?"?path="+encodeURIComponent(path):""),{method:method,headers:h,body:body?JSON.stringify(body):undefined,cache:"no-store"})
+    .then(function(r){ if(r.status===401){ document.getElementById("gate").classList.add("on"); throw {code:"clave"}; } if(!r.ok) throw {code:"http"}; return r.json(); });
+}
+function send(path,body){
+  if(backend==="db") return body? db.doc(path).set(body) : db.doc(path).delete();
+  if(backend==="http") return api(body?"PUT":"DELETE",path,body);
+  return Promise.resolve();
+}
+function write(path,body,now){
+  if(body) docs[path]=body; else delete docs[path];
+  latest[path]=body? JSON.parse(JSON.stringify(body)) : null;
+  saveLocal();
+  if(backend==="local"||!backend) return;
+  pending[path]=true;
+  clearTimeout(timers[path]);
+  timers[path]=setTimeout(function(){
+    var b=latest[path];
+    setSync("ok","Guardando…");
+    chains[path]=(chains[path]||Promise.resolve()).then(function(){ return send(path,b); })
+      .then(function(){ if(latest[path]===b) delete pending[path]; setSync("ok","Guardado para Anita y Nico"); })
+      .catch(function(e){ delete pending[path]; setSync("local", e&&e.code==="clave"?"Falta la clave de acceso":(e&&e.code==="invalid_argument"?"Tu acceso es de solo lectura":"No se pudo guardar. Edita de nuevo para reintentar")); });
+  },now?0:800);
+}
+function merge(col,incoming){
+  var pre=col+"/";
+  for(var p in docs) if(p.indexOf(pre)===0 && !pending[p] && !(p in incoming)) delete docs[p];
+  for(var q in incoming) if(!pending[q]) docs[q]=incoming[q];
+}
+function remoteUpdated(){ saveLocal(); renderStats(); renderList(); renderCal(); renderJor(); renderTeam(); refreshSheet(); }
+function pull(){
+  return api("GET").then(function(res){
+    var by={}; COLS.forEach(function(c){by[c]={};});
+    for(var p in res.docs){ var c=p.split("/")[0]; if(by[c]) by[c][p]=res.docs[p]; }
+    COLS.forEach(function(c){ merge(c,by[c]); });
+    document.getElementById("gate").classList.remove("on");
+    setSync("ok","Guardado para Anita y Nico"); remoteUpdated();
+  });
+}
+function startHttp(){
+  backend="http";
+  pull().catch(function(e){ if(!(e&&e.code==="clave")) setSync("local","Sin conexión con el servidor"); });
+  setInterval(function(){ if(!document.hidden) pull().catch(function(){}); },6000);
+}
+function startDb(d){
+  backend="db"; db=d;
+  var t=setTimeout(function(){ setSync("local","Sin conexión con los datos compartidos todavía"); },10000);
+  COLS.forEach(function(c){
+    db.collection(c).onSnapshot(function(snap){
+      if(!snap.metadata.fromCache){ clearTimeout(t); setSync("ok","Guardado para Anita y Nico"); }
+      var inc={}; snap.docs.forEach(function(doc){ inc[c+"/"+doc.id]=JSON.parse(JSON.stringify(doc.data()||{})); });
+      merge(c,inc); remoteUpdated();
+    },function(){ clearTimeout(t); setSync("local","Guardado solo en este navegador"); });
+  });
+}
+function startLocal(){ backend="local"; setSync("local","Guardado solo en este navegador"); }
+function boot(){
+  if(window.claude && typeof window.claude.use==="function"){
+    window.claude.use("db").then(function(d){ if(d) startDb(d); else startLocal(); },startLocal);
+  }else if(location.protocol==="http:"||location.protocol==="https:"){
+    fetch("/api/docs",{headers:{"x-access-code":code},cache:"no-store"}).then(function(r){
+      if(r.status===401||(r.ok&&(r.headers.get("content-type")||"").indexOf("json")>=0)) startHttp(); else startLocal();
+    },startLocal);
+  }else startLocal();
+}
+
+/* cambios */
+function change(id,k,v){
+  var path="guiones/"+id, b={}; var cur=docs[path]||{};
+  FIELDS.forEach(function(f){ if(typeof cur[f]==="string") b[f]=cur[f]; });
+  b[k]=v; if(me) b.por=me;
+  write(path,b);
+  renderStats(); renderList(); renderCal(); renderJor(); renderTeam();
+}
+
+/* vistas */
+function renderStats(){
+  var c={}; ESTADOS.forEach(function(e){c[e]=0;});
+  var all=ids(), next=null;
+  all.forEach(function(id){ var e=val(id,"estado"); c[e]=(c[e]||0)+1; var d=pd(val(id,"grab")); if(d && d>=today && ESTADOS.indexOf(e)<2 && (!next||d<next.d)) next={d:d,s:val(id,"grab")}; });
+  var h='<div class="stat"><b>'+all.length+'</b><span>reels activos</span></div>';
+  ESTADOS.forEach(function(e){ h+='<div class="stat"><b>'+c[e]+'</b><span>'+esc(e)+'</span></div>'; });
+  h+='<div class="stat"><b style="font-size:17px;line-height:1.6">'+(next?fd(next.s):"—")+'</b><span>próxima grabación</span></div>';
+  document.getElementById("stats").innerHTML=h;
+}
+function renderList(){
+  var h=""; ids(showArch).forEach(function(id){
+    var e=val(id,"estado"), a=val(id,"archivado")==="1";
+    h+='<button class="item'+(a?" arch":"")+'" role="option" data-id="'+esc(id)+'" aria-selected="'+(id===sel)+'"><span class="n">'+num(id)+'</span><span class="t">'+esc(val(id,"titulo")||"Sin título")+'</span><span class="m"><span class="'+pillClass(e)+'">'+esc(a?"Archivado":e)+'</span><span>'+fd(val(id,"pub"))+'</span>'+(val(id,"resp")?'<span>· '+esc(val(id,"resp"))+'</span>':'')+'</span></button>';
+  });
+  document.getElementById("list").innerHTML=h;
+}
+function inp(id,k,label,type,cls){ return '<label class="f '+(cls||"")+'" for="f-'+k+'">'+label+'<input id="f-'+k+'" data-k="'+k+'" type="'+(type||"text")+'" value="'+esc(val(id,k))+'"></label>'; }
+function ta(id,k,label,rows,cls,hint){ return '<label class="f '+(cls||"")+'" for="f-'+k+'">'+label+(hint?' <small>'+hint+'</small>':'')+'<textarea id="f-'+k+'" data-k="'+k+'" rows="'+rows+'">'+esc(val(id,k))+'</textarea></label>'; }
+function respOptions(id){
+  var cur=val(id,"resp"), names=team().map(function(t){return t.nombre;}).filter(Boolean);
+  if(cur && names.indexOf(cur)<0) names.push(cur);
+  return '<option value="">Sin asignar</option>'+names.map(function(n){return '<option'+(n===cur?" selected":"")+'>'+esc(n)+'</option>';}).join("");
+}
+function renderSheet(){
+  var id=sel; if(ids(true).indexOf(id)<0){ id=sel=ids(true)[0]; }
+  var a=val(id,"archivado")==="1";
+  var es='<label class="f" for="f-estado">Estado<select id="f-estado" data-k="estado">'+ESTADOS.map(function(e){return '<option'+(e===val(id,"estado")?" selected":"")+'>'+esc(e)+'</option>';}).join("")+'</select></label>';
+  var jo='<label class="f" for="f-jornada">Jornada<select id="f-jornada" data-k="jornada"><option value="">Sin jornada</option>'+Object.keys(JORNADAS).map(function(j){return '<option value="'+j+'"'+(j===val(id,"jornada")?" selected":"")+'>'+esc(JORNADAS[j].nombre)+'</option>';}).join("")+'</select></label>';
+  var re='<label class="f" for="f-resp">Responsable<select id="f-resp" data-k="resp">'+respOptions(id)+'</select></label>';
+  document.getElementById("sheet").innerHTML=
+  '<div class="sheet-head"><div class="orig" id="origline"></div>'+
+  '<div class="btns"><button class="btn" id="b-copy" type="button">Copiar guion</button>'+(DEF[id]?'<button class="btn" id="b-reset" type="button">Volver a la sugerencia</button>':'')+'<button class="btn" id="b-arch" type="button">'+(a?"Desarchivar":"Archivar")+'</button></div></div>'+
+  inp(id,"titulo","Reel "+num(id),"text","title")+
+  '<div class="meta">'+es+re+jo+inp(id,"grab","Grabación","date")+inp(id,"pub","Publicación","date")+inp(id,"dur","Duración")+inp(id,"formato","Formato")+'</div>'+
+  '<div class="two">'+inp(id,"talento","Quién sale en cámara")+inp(id,"proyecto","Proyecto o tema")+'</div>'+
+  inp(id,"loc","Locación")+
+  ta(id,"gancho","Gancho",2,"hook","primeros 3 segundos")+
+  ta(id,"escenas","Guion escena por escena",9)+
+  '<div class="two">'+ta(id,"pantalla","Texto en pantalla",5)+ta(id,"audio","Audio",5)+'</div>'+
+  ta(id,"cta","Llamado a la acción y caption",4)+
+  '<div class="two">'+ta(id,"prod","Props y producción",4)+ta(id,"ojo","Ojo antes de grabar",4,"warn")+'</div>'+
+  '<div class="comments"><h3 id="cmtitle"></h3><div id="cmlist"></div><div class="cmform"><textarea id="cmtext" rows="2" placeholder="Escribe un comentario para este reel"></textarea><button class="btn primary" id="b-cm" type="button"></button></div></div>';
+  renderComments();
+}
+function renderComments(){
+  var list=document.getElementById("cmlist"); if(!list) return;
+  var cs=comments(sel), h="";
+  cs.forEach(function(x){ var d=new Date(x.c.ts); var when=isNaN(d)?"":DOW[d.getDay()]+" "+d.getDate()+" "+MES[d.getMonth()]+", "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+    h+='<div class="cm"><div class="h"><b>'+esc(x.c.autor||"Sin nombre")+'</b><span>'+esc(when)+'</span><button type="button" data-del="'+esc(x.id)+'">Borrar</button></div><p>'+esc(x.c.texto||"")+'</p></div>'; });
+  list.innerHTML=h||'<p class="legend" style="margin:0">Todavía no hay comentarios en este reel.</p>';
+  document.getElementById("cmtitle").textContent="Comentarios ("+cs.length+")";
+  var b=document.getElementById("b-cm"); b.disabled=!me; b.textContent=me?"Comentar como "+me:"Elige arriba quién eres";
+  var por=val(sel,"por");
+  document.getElementById("origline").textContent=(DEF[sel]?"Los campos traen la sugerencia inicial. Escribe encima para dejar la versión del equipo.":"Reel creado por el equipo.")+(por?" Última edición: "+por+".":"");
+}
+function refreshSheet(){
+  if(ids(true).indexOf(sel)<0){ renderSheet(); return; }
+  var els=document.querySelectorAll("#sheet [data-k]");
+  for(var i=0;i<els.length;i++){ var el=els[i]; if(el===document.activeElement) continue; var k=el.getAttribute("data-k");
+    if(k==="resp"){ el.innerHTML=respOptions(sel); continue; }
+    var v=val(sel,k); if(el.value!==v) el.value=v; }
+  renderComments();
+}
+function eventsByDay(){
+  var m={}; ids().forEach(function(id){
+    var g=val(id,"grab"), p=val(id,"pub");
+    if(pd(g)) (m[g]=m[g]||[]).push({t:"rec",id:id});
+    if(pd(p)) (m[p]=m[p]||[]).push({t:"pub",id:id});
+  });
+  return m;
+}
+function renderCal(){
+  var y=calM.getFullYear(), mo=calM.getMonth(), ev=eventsByDay();
+  document.getElementById("c-title").textContent=MESL[mo]+" "+y;
+  document.getElementById("y-title").textContent=y;
+  var counts=[0,0,0,0,0,0,0,0,0,0,0,0];
+  for(var k in ev){ var d0=pd(k); if(d0 && d0.getFullYear()===y) counts[d0.getMonth()]+=ev[k].length; }
+  document.getElementById("months").innerHTML=MESL.map(function(n,i){ return '<button type="button" data-m="'+i+'" aria-pressed="'+(i===mo)+'">'+n.slice(0,3)+(counts[i]?' <small>'+counts[i]+'</small>':'')+'</button>'; }).join("");
+  var h=["lun","mar","mié","jue","vie","sáb","dom"].map(function(d){return '<div class="dow">'+d+'</div>';}).join("");
+  var first=new Date(y,mo,1), lead=(first.getDay()+6)%7, days=new Date(y,mo+1,0).getDate();
+  for(var i=0;i<lead;i++) h+='<div class="day out"></div>';
+  for(var d=1;d<=days;d++){
+    var dt=new Date(y,mo,d), s=iso(dt), wd=dt.getDay(), list=ev[s]||[], nt=note(s);
+    h+='<button type="button" class="day'+(wd===0||wd===6?" wknd":"")+(dt.getTime()===today.getTime()?" today":"")+'" data-day="'+s+'" aria-pressed="'+(s===selDay)+'"><span class="top"><span class="num">'+d+'</span>'+(FERIADOS[s]?'<span class="fer">'+FERIADOS[s]+'</span>':'')+'</span>';
+    list.forEach(function(e){ h+='<span class="chip '+e.t+'" title="'+(e.t==="pub"?"Publicar: ":"Grabar: ")+esc(label(e.id))+'">'+num(e.id)+'<span class="tt"> · '+esc(val(e.id,"titulo"))+'</span></span>'; });
+    if(nt) h+='<span class="chip note">'+esc(nt)+'</span>';
+    h+='</button>';
+  }
+  document.getElementById("grid").innerHTML=h;
+  renderPanel(ev);
+}
+function renderPanel(ev){
+  var el=document.getElementById("panel");
+  if(el.contains(document.activeElement) && document.activeElement.id==="p-note") return;
+  if(!selDay){ el.innerHTML='<h3>Elige un día</h3><p class="legend" style="margin:0">Toca cualquier día del calendario para ver lo que hay agendado, mover un reel a esa fecha o dejar una nota.</p>'; return; }
+  ev=ev||eventsByDay(); var d=pd(selDay), list=ev[selDay]||[];
+  var h='<h3>'+DOWL[d.getDay()]+" "+d.getDate()+" de "+MESL[d.getMonth()]+'</h3>';
+  if(FERIADOS[selDay]) h+='<span class="pill s2">'+FERIADOS[selDay]+'</span>';
+  if(!list.length) h+='<p class="legend" style="margin:0">Nada agendado este día.</p>';
+  list.forEach(function(e){ h+='<div class="evrow"><span><b>'+(e.t==="pub"?"Publicar":"Grabar")+'</b> '+esc(label(e.id))+'</span><span class="btns"><button class="btn" type="button" data-open="'+esc(e.id)+'">Abrir</button><button class="btn" type="button" data-unset="'+esc(e.id)+'" data-t="'+e.t+'">Quitar</button></span></div>'; });
+  h+='<label class="f" for="p-reel">Agendar un reel este día<select id="p-reel">'+ids().map(function(id){return '<option value="'+esc(id)+'">'+esc(label(id))+'</option>';}).join("")+'</select></label>';
+  h+='<div class="btns"><button class="btn primary" type="button" id="p-pub">Publicar este día</button><button class="btn" type="button" id="p-rec">Grabar este día</button></div>';
+  h+='<label class="f" for="p-note">Nota del día<input id="p-note" value="'+esc(note(selDay))+'" placeholder="Reunión, feriado, entrega de piloto…"></label>';
+  el.innerHTML=h;
+}
+function renderJor(){
+  var h="", keys=Object.keys(JORNADAS).concat([""]);
+  keys.forEach(function(j){
+    var J=JORNADAS[j]||{nombre:"Sin jornada asignada",detalle:"Reels que todavía no tienen día de grabación agrupado."};
+    var rs=ids().filter(function(id){ var v=val(id,"jornada"); return j? v===j : !JORNADAS[v]; });
+    if(!j && !rs.length) return;
+    h+='<div class="jor"><h3>'+esc(J.nombre)+(J.fecha?' <span class="pill">'+fd(J.fecha)+' sugerido</span>':'')+' <span class="pill s1">'+rs.length+' reels</span></h3><p class="sub">'+esc(J.detalle)+'</p><div class="tblwrap"><table><thead><tr><th>Reel</th><th>Grabación</th><th>Responsable</th><th>En cámara</th><th>Locación</th><th>Props y producción</th><th>Estado</th></tr></thead><tbody>';
+    rs.forEach(function(id){ var e=val(id,"estado"); h+='<tr><td><a href="#guiones" data-id="'+esc(id)+'">'+esc(label(id))+'</a></td><td>'+fd(val(id,"grab"))+'</td><td>'+esc(val(id,"resp")||"—")+'</td><td>'+esc(val(id,"talento"))+'</td><td>'+esc(val(id,"loc"))+'</td><td>'+esc(val(id,"prod"))+'</td><td><span class="'+pillClass(e)+'">'+esc(e)+'</span></td></tr>'; });
+    if(!rs.length) h+='<tr><td colspan="7">Sin reels asignados.</td></tr>';
+    h+='</tbody></table></div></div>';
+  });
+  document.getElementById("jor").innerHTML=h;
+}
+function renderTeam(){
+  var all=ids(), h="";
+  team().forEach(function(t){
+    var mine=all.filter(function(id){return val(id,"resp")===t.nombre;});
+    h+='<tr><td><b>'+esc(t.nombre)+'</b></td><td>'+esc(t.rol)+'</td><td>'+(mine.length? mine.map(function(id){return '<a href="#guiones" data-id="'+esc(id)+'">'+num(id)+'</a>';}).join(", ") : "—")+'</td><td>'+(t.fijo?'':'<button class="btn" type="button" data-rm="'+esc(t.id)+'">Quitar</button>')+'</td></tr>';
+  });
+  document.getElementById("team").innerHTML=h;
+}
+function renderWho(){ var bs=document.querySelectorAll("#who button"); for(var i=0;i<bs.length;i++) bs[i].setAttribute("aria-pressed",bs[i].getAttribute("data-me")===me); }
+function route(){
+  var v=(location.hash||"").replace("#",""); if(["guiones","calendario","jornadas","equipo","marca"].indexOf(v)<0) v="guiones";
+  var vs=document.querySelectorAll(".view"); for(var i=0;i<vs.length;i++) vs[i].classList.toggle("on",vs[i].id==="v-"+v);
+  var as=document.querySelectorAll("#tabs a"); for(var j=0;j<as.length;j++){ if(as[j].getAttribute("href")==="#"+v) as[j].setAttribute("aria-current","page"); else as[j].removeAttribute("aria-current"); }
+}
+function openReel(id){ sel=id; if(val(id,"archivado")==="1"){ showArch=true; document.getElementById("showarch").checked=true; } renderList(); renderSheet(); if(location.hash!=="#guiones") location.hash="#guiones"; route(); }
+function renderAll(){ renderWho(); renderStats(); renderList(); renderSheet(); renderCal(); renderJor(); renderTeam(); }
+
+/* eventos */
+document.getElementById("who").addEventListener("click",function(e){ var b=e.target.closest("[data-me]"); if(!b) return; me=b.getAttribute("data-me"); try{localStorage.setItem("rm-me",me);}catch(x){} renderWho(); renderComments(); });
+document.getElementById("gate").addEventListener("submit",function(e){ e.preventDefault(); code=document.getElementById("code").value; try{localStorage.setItem("rm-code",code);}catch(x){} pull().catch(function(){}); });
+document.getElementById("list").addEventListener("click",function(e){ var b=e.target.closest("[data-id]"); if(b){ sel=b.getAttribute("data-id"); renderList(); renderSheet(); } });
+document.getElementById("showarch").addEventListener("change",function(e){ showArch=e.target.checked; renderList(); });
+document.getElementById("b-new").addEventListener("click",function(){
+  var id=uid("n"); write("guiones/"+id,{titulo:"Nuevo reel",estado:"Sugerencia",creado:new Date().toISOString(),por:me||""},true);
+  sel=id; renderAll(); var t=document.getElementById("f-titulo"); if(t){ t.focus(); t.select(); }
+});
+document.getElementById("sheet").addEventListener("input",function(e){ var k=e.target.getAttribute("data-k"); if(k) change(sel,k,e.target.value); });
+document.getElementById("sheet").addEventListener("click",function(e){
+  var t=e.target;
+  if(t.id==="b-copy"){
+    var id=sel;
+    var txt=label(id)+"\nGrabación: "+fd(val(id,"grab"))+" · Publicación: "+fd(val(id,"pub"))+" · "+val(id,"dur")+"\nResponsable: "+(val(id,"resp")||"sin asignar")+"\nEn cámara: "+val(id,"talento")+"\nLocación: "+val(id,"loc")+"\n\nGANCHO\n"+val(id,"gancho")+"\n\nGUION\n"+val(id,"escenas")+"\n\nTEXTO EN PANTALLA\n"+val(id,"pantalla")+"\n\nAUDIO\n"+val(id,"audio")+"\n\nCTA Y CAPTION\n"+val(id,"cta")+"\n\nPRODUCCIÓN\n"+val(id,"prod")+"\n\nOJO\n"+val(id,"ojo");
+    try{ navigator.clipboard.writeText(txt).then(function(){ t.textContent="Copiado"; setTimeout(function(){t.textContent="Copiar guion";},1500); },function(){ t.textContent="No se pudo copiar"; }); }catch(err){ t.textContent="No se pudo copiar"; }
+  }
+  if(t.id==="b-reset"){
+    if(t.getAttribute("data-sure")!=="1"){ t.setAttribute("data-sure","1"); t.textContent="Confirmar: borrar los cambios"; return; }
+    write("guiones/"+sel,null,true); renderAll();
+  }
+  if(t.id==="b-arch"){ change(sel,"archivado",val(sel,"archivado")==="1"?"":"1"); renderSheet(); }
+  if(t.id==="b-cm"){
+    var box=document.getElementById("cmtext"), v=box.value.trim(); if(!v||!me) return;
+    write("comentarios/"+uid("c"),{reel:sel,autor:me,texto:v,ts:new Date().toISOString()},true); box.value=""; renderComments();
+  }
+  if(t.getAttribute("data-del")){
+    if(t.getAttribute("data-sure")!=="1"){ t.setAttribute("data-sure","1"); t.textContent="¿Seguro? Borrar"; return; }
+    lastReel["comentarios/"+t.getAttribute("data-del")]=sel; write("comentarios/"+t.getAttribute("data-del"),null,true); renderComments();
+  }
+});
+document.getElementById("c-prev").addEventListener("click",function(){ calM=new Date(calM.getFullYear(),calM.getMonth()-1,1); renderCal(); });
+document.getElementById("c-next").addEventListener("click",function(){ calM=new Date(calM.getFullYear(),calM.getMonth()+1,1); renderCal(); });
+document.getElementById("y-prev").addEventListener("click",function(){ calM=new Date(calM.getFullYear()-1,calM.getMonth(),1); renderCal(); });
+document.getElementById("y-next").addEventListener("click",function(){ calM=new Date(calM.getFullYear()+1,calM.getMonth(),1); renderCal(); });
+document.getElementById("c-today").addEventListener("click",function(){ calM=new Date(today.getFullYear(),today.getMonth(),1); selDay=iso(today); renderCal(); });
+document.getElementById("months").addEventListener("click",function(e){ var b=e.target.closest("[data-m]"); if(b){ calM=new Date(calM.getFullYear(),+b.getAttribute("data-m"),1); renderCal(); } });
+document.getElementById("grid").addEventListener("click",function(e){ var b=e.target.closest("[data-day]"); if(b){ selDay=b.getAttribute("data-day"); renderCal(); } });
+document.getElementById("panel").addEventListener("click",function(e){
+  var t=e.target;
+  if(t.getAttribute("data-open")) openReel(t.getAttribute("data-open"));
+  else if(t.getAttribute("data-unset")) change(t.getAttribute("data-unset"), t.getAttribute("data-t")==="pub"?"pub":"grab", "");
+  else if(t.id==="p-pub"||t.id==="p-rec"){ var id=document.getElementById("p-reel").value; if(id) change(id, t.id==="p-pub"?"pub":"grab", selDay); }
+  refreshSheet();
+});
+document.getElementById("panel").addEventListener("input",function(e){
+  if(e.target.id!=="p-note"||!selDay) return;
+  var v=e.target.value; write("dias/"+selDay, v? {nota:v,por:me||""} : null);
+});
+document.getElementById("panel").addEventListener("focusout",function(e){ if(e.target.id==="p-note") setTimeout(renderCal,0); });
+document.getElementById("jor").addEventListener("click",function(e){ var b=e.target.closest("a[data-id]"); if(b){ e.preventDefault(); openReel(b.getAttribute("data-id")); } });
+document.getElementById("team").addEventListener("click",function(e){
+  var a=e.target.closest("a[data-id]"); if(a){ e.preventDefault(); openReel(a.getAttribute("data-id")); return; }
+  var b=e.target.closest("[data-rm]"); if(b){ write("equipo/"+b.getAttribute("data-rm"),null,true); renderTeam(); refreshSheet(); }
+});
+document.getElementById("teamform").addEventListener("submit",function(e){
+  e.preventDefault(); var n=document.getElementById("t-nombre"), r=document.getElementById("t-rol"); var name=n.value.trim(); if(!name) return;
+  write("equipo/"+uid("p"),{nombre:name,rol:r.value.trim()},true); n.value=""; r.value=""; renderTeam(); refreshSheet();
+});
+window.addEventListener("hashchange",route);
+
+loadLocal(); renderAll(); route(); boot();
+</script>
+</body>
+</html>

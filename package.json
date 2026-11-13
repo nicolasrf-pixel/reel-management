@@ -1,0 +1,7 @@
+{
+  "name": "reel-management",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.1.38",
+  "scripts": { "start": "bun index.tsx" }
+}
